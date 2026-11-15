@@ -1,0 +1,13 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.zoma.os'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.zoma.os'
+        minSdk 16
+        targetSdk 22
+        versionCode 1
+        versionName '1.0-test'
+    }
+}

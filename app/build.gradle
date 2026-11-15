@@ -1,5 +1,4 @@
 plugins { id 'com.android.application' }
-
 android {
     namespace 'com.zoma.os'
     compileSdk 35
@@ -7,7 +6,7 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 1
-        versionName '1.0-test'
+        versionCode 3
+        versionName '2.1-clock-options'
     }
 }

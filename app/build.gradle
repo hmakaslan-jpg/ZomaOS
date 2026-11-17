@@ -6,7 +6,7 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 17
-        versionName '9.0-stabilization'
+        versionCode 18
+        versionName '9.2-daylight-resume'
     }
 }

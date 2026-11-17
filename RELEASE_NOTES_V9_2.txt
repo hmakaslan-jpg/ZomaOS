@@ -1,0 +1,10 @@
+ZomaOS NEXUS V9.2 - Daylight & USB Resume test source
+Base: user-supplied V9 Stabilization Source(1).zip
+- Daylight UI rebuilt in pearl white, silver and teal using existing real-SUV image.
+- Night composition and existing radio/USB audio focus paths preserved.
+- USB last-file, last-position and playback flag persisted; startup attempts resume if media exists.
+- FM source shown as last selected (NOT verified playing state).
+- External music metadata may be received from compatible public broadcasts; NOT confirmed Bluetooth status.
+- Original factory radio frequency and Bluetooth AVRCP metadata integration NOT implemented.
+- Build requires Android SDK / Gradle via existing GitHub Actions workflow.
+- Test on actual Android 4.1 API16 800x480 hardware before daily use.

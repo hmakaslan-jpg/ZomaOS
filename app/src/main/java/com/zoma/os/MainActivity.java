@@ -25,12 +25,53 @@ public class MainActivity extends Activity {
     Socket tcpSocket;
     Dashboard dashboard;
     Bitmap nexusRoad;
+    String trackTitle="", trackArtist="", metadataSource="";
+    long metadataTime=0;
+    BroadcastReceiver musicInfoReceiver;
+
     int centerMode=0; // 0 road, 1 analog, 2 digital
     int theme=0; // 0 cyan, 1 amber, 2 emerald
     final Handler ui=new Handler();
     final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);nexusRoad=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.nexus_road);dashboard=new Dashboard();setContentView(dashboard);}
+    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);nexusRoad=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.nexus_road);dashboard=new Dashboard();setContentView(dashboard);startMusicDiscovery();}
+    // Discovery only: some players publish public metadata broadcasts, many factory players do not.
+    void startMusicDiscovery(){
+        IntentFilter filter=new IntentFilter();
+        String[] actions={"com.android.music.metachanged","com.android.music.playstatechanged",
+            "com.htc.music.metachanged","com.miui.player.metachanged",
+            "com.sonyericsson.music.metachanged","com.spotify.music.metadatachanged"};
+        for(String a:actions)filter.addAction(a);
+        musicInfoReceiver=new BroadcastReceiver(){@Override public void onReceive(Context ctx,Intent intent){
+            try{
+                String title=intent.getStringExtra("track");
+                if(title==null)title=intent.getStringExtra("title");
+                String artist=intent.getStringExtra("artist");
+                if(title!=null && title.trim().length()>0){
+                    trackTitle=title.trim();trackArtist=artist==null?"":artist.trim();
+                    metadataSource=intent.getAction();metadataTime=System.currentTimeMillis();
+                    if(dashboard!=null)dashboard.invalidate();
+                }
+            }catch(Throwable err){android.util.Log.w("ZomaOS","Metadata probe ignored",err);}
+        }};
+        try{registerReceiver(musicInfoReceiver,filter);}catch(Throwable err){
+            android.util.Log.w("ZomaOS","Metadata receiver unavailable",err);musicInfoReceiver=null;
+        }
+    }
+    @Override protected void onDestroy(){
+        if(musicInfoReceiver!=null){try{unregisterReceiver(musicInfoReceiver);}catch(Exception ignored){}}
+        stop();super.onDestroy();
+    }
+    void showMediaDiagnostics(){
+        String selected=getPreferences(MODE_PRIVATE).getString("musicPackage","Not selected");
+        String msg="Selected player: "+selected+"\nMetadata: "+
+            (trackTitle.length()>0?trackTitle+" / "+trackArtist:"No compatible metadata broadcast detected")+
+            "\nSource: "+(metadataSource.length()>0?metadataSource:"none")+
+            "\n\nThe factory player may keep metadata private. This is a read-only test.";
+        new AlertDialog.Builder(this).setTitle("Media diagnostics - V6.2").setMessage(msg)
+            .setPositiveButton("OK",null).setNeutralButton("Choose player",new android.content.DialogInterface.OnClickListener(){
+                public void onClick(android.content.DialogInterface d,int w){chooseAnyMusicApp();}}).show();
+    }
     void resetReadings(){speed=-1;rpm=-1;coolant=-999;load=-1;fuel=-1;lastSample=0;}
     void stop(){running=false;simulated=false;try{if(btSocket!=null)btSocket.close();}catch(Exception ignored){}try{if(tcpSocket!=null)tcpSocket.close();}catch(Exception ignored){}btSocket=null;tcpSocket=null;}
     void setStatus(String s){status=s;ui.post(new Runnable(){public void run(){dashboard.invalidate();}});}
@@ -71,13 +112,23 @@ public class MainActivity extends Activity {
             public void onClick(DialogInterface d,int index){getPreferences(MODE_PRIVATE).edit().putString("musicPackage",all.get(index).activityInfo.packageName).apply();openMusic();}
         }).setNegativeButton("Cancel",null).show();
     }
+    // Android 4.1 (API 16) compatible. AudioManager.dispatchMediaKeyEvent was added in API 19.
+    // Media-button broadcasts are best-effort: factory MCU players may ignore them.
     void mediaKey(int key){
-        try {android.media.AudioManager audio=(android.media.AudioManager)getSystemService(AUDIO_SERVICE);
+        try {
             long t=android.os.SystemClock.uptimeMillis();
-            audio.dispatchMediaKeyEvent(new KeyEvent(t,t,KeyEvent.ACTION_DOWN,key,0));
-            audio.dispatchMediaKeyEvent(new KeyEvent(t,t,KeyEvent.ACTION_UP,key,0));
-            toast("Media command sent (player support unverified)");
-        } catch(Exception e){toast("Media control not available");}
+            sendMediaButton(key,KeyEvent.ACTION_DOWN,t);
+            sendMediaButton(key,KeyEvent.ACTION_UP,t);
+            toast("Media key sent; original player support unverified");
+        } catch(Throwable e) {
+            android.util.Log.e("ZomaOS","Media key failed",e);
+            toast("Media control unsupported on this player");
+        }
+    }
+    void sendMediaButton(int key,int action,long when){
+        Intent intent=new Intent(Intent.ACTION_MEDIA_BUTTON);
+        intent.putExtra(Intent.EXTRA_KEY_EVENT,new KeyEvent(when,when,action,key,0));
+        sendOrderedBroadcast(intent,null);
     }
     void openMaps(){launch(new String[]{"com.google.android.apps.maps","com.sygic.aura","com.mapswithme.maps.pro"},"");}
     void showMode(){final String[] modes={"DEMO (clearly simulated)","Bluetooth ELM327 (paired)","Phone bridge over Wi-Fi", "Disconnect / live blank", "Reset trip"};new AlertDialog.Builder(this).setTitle("ZomaOS Telemetry Source").setItems(modes,new android.content.DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int which){if(which==0)demo();if(which==1)chooseBluetooth();if(which==2)bridgeDialog();if(which==3){stop();simulated=false;resetReadings();setStatus("DISCONNECTED");}if(which==4){tripKm=0;dashboard.invalidate();}}}).show();}
@@ -136,8 +187,14 @@ public class MainActivity extends Activity {
             box(591,191,643,244,col("#183E56"));
             centerText("♪",617,228,32,accent(),true);
             text("GEELY MUSIC",653,210,13,Color.WHITE,true);
-            text("Track info unavailable",653,229,10,col("#A2B7C6"),false);
-            text("Media keys - experimental",592,267,10,col("#A2B7C6"),false);
+            String title=trackTitle.length()>0?trackTitle:"Track info unavailable";
+            if(title.length()>23)title=title.substring(0,22)+"...";
+            text(title,653,229,10,col("#DCEBF5"),false);
+            if(trackTitle.length()>0){String a=trackArtist;
+                if(a.length()>24)a=a.substring(0,23)+"...";
+                text(a,653,242,9,col("#A2B7C6"),false);}
+
+            text("Hold panel: diagnostics",592,267,10,col("#A2B7C6"),false);
             String[] controls={"PREV","PLAY","NEXT"};
             for(int i=0;i<3;i++){float l=588+i*66;box(l,280,l+61,319,col("#1C4962"));centerText(controls[i],l+30,304,11,Color.WHITE,true);}
             box(589,328,776,364,col("#28546B"));centerText("OPEN ORIGINAL PLAYER",683,351,12,Color.WHITE,true);
@@ -148,7 +205,7 @@ public class MainActivity extends Activity {
             glow(400,15,360,Color.argb(36,5,171,233));
             box(9,8,791,59,col("#0B1C2B"));
             text("ZomaOS",23,37,26,Color.WHITE,true);
-            text("NEXUS V6",26,53,11,accent(),true);
+            text("NEXUS V6.2",26,53,11,accent(),true);
             text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),691,39,26,Color.WHITE,true);
             String state=simulated?"DEMO - SIMULATED":status;
             centerText(state,403,36,12,simulated?col("#FFBC68"):col("#91B9D0"),true);
@@ -183,7 +240,7 @@ public class MainActivity extends Activity {
             if(e.getAction()==MotionEvent.ACTION_DOWN){touchDown=System.currentTimeMillis();return true;}
             if(e.getAction()==MotionEvent.ACTION_UP && System.currentTimeMillis()-touchDown>650){
                 float xx=e.getX()*800f/getWidth(), yy=e.getY()*480f/getHeight();
-                if((yy>=394&&xx>=340&&xx<455)||(xx>=576&&yy>=155&&yy<=376)){chooseAnyMusicApp();return true;}
+                if(xx>=576&&yy>=155&&yy<=376){showMediaDiagnostics();return true;}if(yy>=394&&xx>=340&&xx<455){chooseAnyMusicApp();return true;}
             }
 if(e.getAction()!=MotionEvent.ACTION_UP)return true;float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();if(x>=588&&x<=790&&y>=280&&y<=319){int slot=(int)((x-588)/66);mediaKey(slot==0?KeyEvent.KEYCODE_MEDIA_PREVIOUS:slot==1?KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:KeyEvent.KEYCODE_MEDIA_NEXT);return true;}if(x>=576&&x<=790&&y>=155&&y<=376){openMusic();return true;}if(y>=394){int i=(int)((x-16)/111);switch(i){case 0:showMode();break;case 1:launch(new String[]{"me.ri3d.openauto"},"");break;case 2:chooseCenterMode();break;case 3:openMusic();break;case 4:openMaps();break;case 5:launch(new String[]{},"apps");break;case 6:chooseTheme();break;}}return true;}
     }

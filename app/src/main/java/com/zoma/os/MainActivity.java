@@ -7,6 +7,7 @@ import android.content.*;
 import android.graphics.*;
 import android.view.*;
 import android.widget.*;
+import android.content.pm.*;
 import java.io.*;
 import java.net.*;
 import java.text.SimpleDateFormat;
@@ -36,7 +37,38 @@ public class MainActivity extends Activity {
     int accent(){return Color.parseColor(theme==1?"#FFBD69":theme==2?"#60E8BA":"#60D7FF");}
     int mutedAccent(){return Color.parseColor(theme==1?"#A66A2C":theme==2?"#17785D":"#17658B");}
     void chooseTheme(){final String[] themes={"ICE BLUE","AMBER NIGHT","EMERALD"};new AlertDialog.Builder(this).setTitle("ZomaOS Theme Studio").setSingleChoiceItems(themes,theme,new android.content.DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int which){theme=which;getPreferences(MODE_PRIVATE).edit().putInt("theme",which).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
-    void openMusic(){launch(new String[]{"com.soundcloud.android","com.google.android.music","com.android.music","com.spotify.music"},"");}
+    void openMusic(){
+        String selected=getPreferences(MODE_PRIVATE).getString("musicPackage", "");
+        if(selected.length()>0){Intent intent=getPackageManager().getLaunchIntentForPackage(selected);
+            if(intent!=null){startActivity(intent);return;}}
+        chooseMusicApp();
+    }
+    void chooseMusicApp(){
+        final Intent probe=new Intent(Intent.ACTION_MAIN);probe.addCategory(Intent.CATEGORY_LAUNCHER);
+        java.util.List<ResolveInfo> all=getPackageManager().queryIntentActivities(probe,0);
+        final ArrayList<ResolveInfo> candidates=new ArrayList<ResolveInfo>();
+        for(ResolveInfo info:all){String label=String.valueOf(info.loadLabel(getPackageManager())).toLowerCase(Locale.US);
+            String pkg=info.activityInfo.packageName.toLowerCase(Locale.US);
+            if(label.contains("music")||label.contains("audio")||label.contains("player")||pkg.contains("music"))candidates.add(info);}
+        // Some factory players have non-obvious package names: allow selection from every app.
+        if(candidates.size()==0)candidates.addAll(all);
+        if(candidates.size()==0){toast("No launchable applications found");return;}
+        final String[] labels=new String[candidates.size()];
+        for(int i=0;i<candidates.size();i++)labels[i]=String.valueOf(candidates.get(i).loadLabel(getPackageManager()))+"  ["+candidates.get(i).activityInfo.packageName+"]";
+        new AlertDialog.Builder(this).setTitle("Select original Music app").setItems(labels,new android.content.DialogInterface.OnClickListener(){
+            public void onClick(DialogInterface d,int index){String pkg=candidates.get(index).activityInfo.packageName;
+                getPreferences(MODE_PRIVATE).edit().putString("musicPackage",pkg).apply();openMusic();}
+        }).setNeutralButton("All apps",new android.content.DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int w){chooseAnyMusicApp();}})
+          .setNegativeButton("Cancel",null).show();
+    }
+    void chooseAnyMusicApp(){
+        Intent probe=new Intent(Intent.ACTION_MAIN);probe.addCategory(Intent.CATEGORY_LAUNCHER);
+        final ArrayList<ResolveInfo> all=new ArrayList<ResolveInfo>(getPackageManager().queryIntentActivities(probe,0));
+        String[] labels=new String[all.size()];for(int i=0;i<all.size();i++)labels[i]=String.valueOf(all.get(i).loadLabel(getPackageManager()))+" ["+all.get(i).activityInfo.packageName+"]";
+        new AlertDialog.Builder(this).setTitle("Choose Music player").setItems(labels,new android.content.DialogInterface.OnClickListener(){
+            public void onClick(DialogInterface d,int index){getPreferences(MODE_PRIVATE).edit().putString("musicPackage",all.get(index).activityInfo.packageName).apply();openMusic();}
+        }).setNegativeButton("Cancel",null).show();
+    }
     void openMaps(){launch(new String[]{"com.google.android.apps.maps","com.sygic.aura","com.mapswithme.maps.pro"},"");}
     void showMode(){final String[] modes={"DEMO (clearly simulated)","Bluetooth ELM327 (paired)","Phone bridge over Wi-Fi", "Disconnect / live blank", "Reset trip"};new AlertDialog.Builder(this).setTitle("ZomaOS Telemetry Source").setItems(modes,new android.content.DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int which){if(which==0)demo();if(which==1)chooseBluetooth();if(which==2)bridgeDialog();if(which==3){stop();simulated=false;resetReadings();setStatus("DISCONNECTED");}if(which==4){tripKm=0;dashboard.invalidate();}}}).show();}
     void demo(){stop();resetReadings();simulated=true;setStatus("DEMO / NOT REAL DATA");new Thread(new Runnable(){public void run(){int i=0;while(simulated){int s=(int)(35+25*Math.sin(i/7.0));setSample(s,800+s*35,85+(i%7),25+(i%35),60);i++;try{Thread.sleep(900);}catch(Exception e){break;}}}}).start();}
@@ -57,6 +89,15 @@ public class MainActivity extends Activity {
         final Paint p=new Paint(3); Canvas c;
         Dashboard(){super(MainActivity.this);setLayerType(View.LAYER_TYPE_SOFTWARE,null);}
         int col(String v){return Color.parseColor(v);}
+        void gradient(float l,float t,float r,float b,int top,int bottom){
+            fill(top);p.setShader(new LinearGradient(l,t,l,b,top,bottom,Shader.TileMode.CLAMP));
+            c.drawRect(l,t,r,b,p);p.setShader(null);
+        }
+        void glow(float x,float y,float radius,int color){
+            fill(color);p.setShader(new RadialGradient(x,y,radius,new int[]{color,Color.TRANSPARENT},null,Shader.TileMode.CLAMP));
+            c.drawCircle(x,y,radius,p);p.setShader(null);
+        }
+        void polygon(float[] pts,int color){fill(color);Path path=new Path();path.moveTo(pts[0],pts[1]);for(int i=2;i<pts.length;i+=2)path.lineTo(pts[i],pts[i+1]);path.close();c.drawPath(path,p);}
         void fill(int color){p.setColor(color);p.setStyle(Paint.Style.FILL);p.setShader(null);}
         void box(float l,float t,float r,float b,int color){fill(color);c.drawRoundRect(new RectF(l,t,r,b),13,13,p);}
         void text(String v,float x,float y,float size,int color,boolean bold){fill(color);p.setTypeface(Typeface.create("sans-serif",bold?Typeface.BOLD:Typeface.NORMAL));p.setTextSize(size);c.drawText(v,x,y,p);}
@@ -71,27 +112,67 @@ public class MainActivity extends Activity {
             hand(cx,cy,(float)(h*Math.PI/6-Math.PI/2),56,6,Color.WHITE);hand(cx,cy,(float)(min*Math.PI/30-Math.PI/2),80,4,accent());hand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),88,2,col("#FFAD65"));fill(Color.WHITE);c.drawCircle(cx,cy,5,p);centerText("ANALOG TIME",cx,365,15,col("#8BA6BD"),true);}
         void hand(float cx,float cy,float a,float len,float width,int color){line(cx,cy,cx+(float)Math.cos(a)*len,cy+(float)Math.sin(a)*len,color,width);}
         void digital(){String time=new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date());centerText(time,400,239,87,Color.WHITE,true);String date=new SimpleDateFormat("EEEE, dd MMM yyyy",Locale.getDefault()).format(new Date());centerText(date,400,284,20,accent(),false);centerText("LOCAL TIME  /  NO OBD REQUIRED",400,346,13,col("#91AFC4"),true);}
-        void road(){Path path=new Path();path.moveTo(278,378);path.lineTo(373,116);path.lineTo(427,116);path.lineTo(522,378);path.close();fill(col("#132B3D"));c.drawPath(path,p);
-            line(277,378,373,116,accent(),3);line(523,378,427,116,accent(),3);
-            for(int i=0;i<5;i++){float y=150+i*i*13;float half=2+i*2;line(400-half,y,400+half,y,col("#83B5D3"),2);}
-            // Stylized lightweight 2D vehicle silhouette; no 3D engine.
-            fill(col("#7BDAFF"));c.drawRoundRect(new RectF(370,268,430,346),17,17,p);
-            fill(col("#17354B"));c.drawRoundRect(new RectF(379,281,421,308),8,8,p);
-            box(371,321,381,338,col("#FF7D65"));box(419,321,429,338,col("#FF7D65"));
-            centerText("ROAD VIEW",400,102,16,accent(),true);centerText("VISUAL ONLY - NOT NAVIGATION",400,370,11,col("#91AFC4"),false);}
-        @Override protected void onDraw(Canvas canvas){c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);c.drawColor(col("#07121F"));
-            box(9,9,791,56,col("#10283D"));text("ZOMA OS",24,38,25,accent(),true);text("V4  SMART COCKPIT",180,37,14,col("#B3D1E5"),true);
+        void road(){
+            // Layered perspective scene: cheap Canvas gradients and polygons, no OpenGL requirement.
+            gradient(212,87,588,390,col("#10243A"),col("#07111F"));
+            glow(400,192,172,Color.argb(72,35,150,210));
+            for(int i=0;i<7;i++){
+                float y=140+i*35;
+                line(214,y,585,y,Color.argb(14,85,180,220),1);
+            }
+            polygon(new float[]{382,130,418,130,570,385,230,385},col("#142A40"));
+            polygon(new float[]{384,130,393,130,334,385,305,385},col("#21384C"));
+            polygon(new float[]{407,130,416,130,495,385,465,385},col("#21384C"));
+            line(382,130,230,385,accent(),2);line(418,130,570,385,accent(),2);
+            for(int i=0;i<5;i++){float yy=165+i*i*13;float width=1+i*2;
+                line(400-width,yy,400+width,yy+9,Color.argb(160,176,220,242),2);}
+            // Vehicle ground shadow and halo.
+            glow(400,317,97,Color.argb(76,45,195,250));
+            fill(Color.argb(160,0,0,0));c.drawOval(new RectF(339,321,461,365),p);
+            // Stylized pseudo-3D vehicle: shaded hood, roof, glass, wheel wells and lamps.
+            polygon(new float[]{368,279,382,247,418,247,432,279,450,314,441,345,359,345,350,314},col("#274D67"));
+            polygon(new float[]{374,279,386,252,414,252,426,279,420,293,380,293},col("#6BC7E8"));
+            polygon(new float[]{382,267,388,255,412,255,418,267,415,279,385,279},col("#0B2037"));
+            polygon(new float[]{352,313,368,281,380,295,376,337,358,344},col("#17344B"));
+            polygon(new float[]{448,313,432,281,420,295,424,337,442,344},col("#17344B"));
+            polygon(new float[]{379,295,421,295,441,326,435,343,365,343,359,326},col("#3D8CAF"));
+            polygon(new float[]{377,302,423,302,435,322,365,322},col("#81CFE9"));
+            polygon(new float[]{366,324,383,325,383,335,362,335},col("#FF5D5F"));
+            polygon(new float[]{417,325,434,324,438,335,417,335},col("#FF5D5F"));
+            box(382,337,418,342,col("#091928"));
+            line(386,250,414,250,Color.WHITE,1);
+            centerText("CINEMATIC ROAD",400,111,15,accent(),true);
+            centerText("VISUAL SCENE  /  NOT LIVE NAVIGATION",400,376,10,col("#8DAFC4"),false);
+        }
+        void mediaCard(){
+            box(602,274,786,382,col("#122B40"));
+            glow(626,304,29,Color.argb(60,80,210,245));
+            text("MEDIA",612,294,12,accent(),true);
+            text("Original player",612,315,13,Color.WHITE,true);
+            text("Tap to open music",612,335,11,col("#A9C1D3"),false);
+            text("Hold: select app",612,351,10,col("#8CA8BE"),false);
+            text("Track metadata: not linked",612,369,9,col("#8CA8BE"),false);
+        }
+        @Override protected void onDraw(Canvas canvas){c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);gradient(0,0,800,480,col("#071728"),col("#030A14"));
+            box(9,9,791,56,col("#10283D"));text("ZOMA OS",24,38,25,accent(),true);text("V5  CINEMATIC COCKPIT",180,37,14,col("#B3D1E5"),true);
             text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),700,37,23,Color.WHITE,true);
             String state=simulated?"DEMO / SIMULATED":status;centerText(state,400,77,13,simulated?col("#FFBC68"):col("#9DB7C8"),true);
             box(11,90,203,385,col("#0D2031"));box(597,90,789,385,col("#0D2031"));
             info(19,100,"SPEED",value(speed),"km/h");info(19,185,"COOLANT",coolant==-999?"--":String.valueOf(coolant),"C");
             info(19,270,"TRIP",String.format(Locale.US,"%.1f",tripKm),"km");
-            info(605,100,"ENGINE RPM",value(rpm),"rpm");info(605,185,"ENGINE LOAD",value(load),"%");info(605,270,"FUEL LEVEL",value(fuel),"%");
+            info(605,100,"ENGINE RPM",value(rpm),"rpm");info(605,185,"ENGINE LOAD",value(load),"%");mediaCard();
             if(centerMode==0)road();else if(centerMode==1)analog();else digital();
             box(9,394,791,472,col("#10283D"));String[] buttons={"OBD","AUTO","VIEW","MUSIC","MAPS","APPS","THEME"};
             for(int i=0;i<buttons.length;i++){float l=16+i*111;box(l,405,l+103,462,i==1?col("#235779"):col("#1A374E"));centerText(buttons[i],l+51,438,15,Color.WHITE,true);}
             if(simulated){box(300,365,500,390,col("#74461E"));centerText("SIMULATED / NOT LIVE",400,383,13,Color.WHITE,true);}
             c.restore();postInvalidateDelayed(1000);}
-        @Override public boolean onTouchEvent(MotionEvent e){if(e.getAction()!=MotionEvent.ACTION_UP)return true;float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();if(y>=394){int i=(int)((x-16)/111);switch(i){case 0:showMode();break;case 1:launch(new String[]{"me.ri3d.openauto"},"");break;case 2:chooseCenterMode();break;case 3:openMusic();break;case 4:openMaps();break;case 5:launch(new String[]{},"apps");break;case 6:chooseTheme();break;}}return true;}
+        long touchDown=0;
+        @Override public boolean onTouchEvent(MotionEvent e){
+            if(e.getAction()==MotionEvent.ACTION_DOWN){touchDown=System.currentTimeMillis();return true;}
+            if(e.getAction()==MotionEvent.ACTION_UP && System.currentTimeMillis()-touchDown>650){
+                float xx=e.getX()*800f/getWidth(), yy=e.getY()*480f/getHeight();
+                if((yy>=394&&xx>=340&&xx<455)||(xx>=597&&yy>=274&&yy<=385)){chooseAnyMusicApp();return true;}
+            }
+if(e.getAction()!=MotionEvent.ACTION_UP)return true;float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();if(x>=597&&y>=274&&y<=385){openMusic();return true;}if(y>=394){int i=(int)((x-16)/111);switch(i){case 0:showMode();break;case 1:launch(new String[]{"me.ri3d.openauto"},"");break;case 2:chooseCenterMode();break;case 3:openMusic();break;case 4:openMaps();break;case 5:launch(new String[]{},"apps");break;case 6:chooseTheme();break;}}return true;}
     }
 }

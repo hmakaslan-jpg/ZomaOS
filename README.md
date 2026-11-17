@@ -1,23 +1,18 @@
-# ZomaOS V4 — Smart Cockpit
+# ZomaOS V5 — Cinematic Cockpit (source)
 
-Android 4.1 / API 16, landscape 800×480, lightweight Canvas UI.
+Based on the user-tested V4 source. Android minSdk 16, 800x480, same applicationId com.zoma.os.
 
-## Features
-- Redesigned cockpit with three center modes: road visualization, analog clock, digital clock.
-- Seven bottom actions: OBD, OpenAuto, View, Music, Maps, Apps, Theme.
-- Preserves V3 Bluetooth Classic ELM327 standard Mode 01 telemetry, demo and Wi-Fi phone bridge receiver.
-- Three accent colors, preferences retained on device.
-- Unavailable telemetry is shown as `--`; demo explicitly labeled.
-- No root, firmware, or ECU write operations.
+## Changes
+- Layered perspective road and pseudo-3D shaded car with lighting, designed to be inexpensive on old hardware. **Not real 3D rendering.**
+- Integrated media launcher panel. First tap prompts to select a music player based on installed launcher apps, with an **All apps** option for obscure factory package names. Selection persists.
+- Long press MUSIC or media panel to reselect the installed music app.
+- Existing OpenAuto button, analog/digital clocks, themes, telemetry demo/OBD client retained.
 
-## GitHub build
-Upload `app/`, root Gradle files and `.github/workflows/build-apk.yml` preserving paths. Commit to main, then Actions > Build ZomaOS V4 APK > Artifacts. Existing workflow from V1 can also build with same Gradle configuration.
+## Important limitations
+- Track metadata, album art, folder navigation and media transport controls are NOT integrated with the factory player yet. The media panel is a launcher, not a live player widget.
+- Factory Music may not be exposed as a normal launcher activity. If it does not appear, gather its package/activity info; don't claim this release fixes it.
+- OBD hardware has not been tested. Demo is labeled.
+- GitHub Actions compile and physical device testing are still required. Keep V4 backup.
 
-## Limitations
-- Road graphic is 2D illustration, NOT real GPS/navigation or 3D engine.
-- Music button launches installed music app; it does not yet show track metadata or remote playback controls.
-- Maps button opens installed supported maps app; if absent shows App not found.
-- Phone bridge requires a separate phone-side sender; this package only receives telemetry.
-- ELM327 Bluetooth compatibility depends on the head unit exposing standard Android Bluetooth RFCOMM.
-- This source has not been compiled/tested on the vehicle; validate APK on the parked head unit.
-- Avoid selecting this app as default Home launcher until tested.
+## Build
+Upload project tree to the existing GitHub repo (keep `.github/workflows/build-apk.yml` intact), commit, open Actions, and download the successful run's APK artifact.

@@ -6,7 +6,7 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 6
-        versionName '5.0-cinematic-cockpit'
+        versionCode 7
+        versionName '6.0-nexus'
     }
 }

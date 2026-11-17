@@ -1,18 +1,16 @@
-# ZomaOS V5 — Cinematic Cockpit (source)
+# ZomaOS NEXUS V6 — Cinematic Cockpit
 
-Based on the user-tested V4 source. Android minSdk 16, 800x480, same applicationId com.zoma.os.
+Android 4.1 (API 16), 800×480. Built on the working V5 source and package `com.zoma.os`.
 
-## Changes
-- Layered perspective road and pseudo-3D shaded car with lighting, designed to be inexpensive on old hardware. **Not real 3D rendering.**
-- Integrated media launcher panel. First tap prompts to select a music player based on installed launcher apps, with an **All apps** option for obscure factory package names. Selection persists.
-- Long press MUSIC or media panel to reselect the installed music app.
-- Existing OpenAuto button, analog/digital clocks, themes, telemetry demo/OBD client retained.
-
-## Important limitations
-- Track metadata, album art, folder navigation and media transport controls are NOT integrated with the factory player yet. The media panel is a launcher, not a live player widget.
-- Factory Music may not be exposed as a normal launcher activity. If it does not appear, gather its package/activity info; don't claim this release fixes it.
-- OBD hardware has not been tested. Demo is labeled.
-- GitHub Actions compile and physical device testing are still required. Keep V4 backup.
+## New
+- Scenic photographic visual asset from the NEXUS concept (cropped to exclude fake gauges/music data).
+- New dashboard layout, genuine live clock and existing OBD status values.
+- Media PREV / PLAY-PAUSE / NEXT buttons send standard Android media key events. **Factory Geely player compatibility is not verified.**
+- OPEN ORIGINAL PLAYER launches selected Music app. Long press Music to choose app.
+- Preserves OpenAuto, views, themes, OBD/demo and Wi-Fi bridge from V5.
 
 ## Build
-Upload project tree to the existing GitHub repo (keep `.github/workflows/build-apk.yml` intact), commit, open Actions, and download the successful run's APK artifact.
+Upload the contents of this folder (not the outer folder) to the existing GitHub repository; retain `.github/workflows/build-apk.yml`. GitHub Actions produces the debug APK. Build and on-device performance **not yet verified**.
+
+## Safety
+The cinematic scene is decorative, **not navigation**. Never interpret demo data as live readings. Do not change factory CAN/MCU settings. Test while parked. Keep the V5 APK as backup.

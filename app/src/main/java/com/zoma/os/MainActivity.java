@@ -5,6 +5,7 @@ import android.os.*;
 import android.bluetooth.*;
 import android.content.*;
 import android.graphics.*;
+import android.view.KeyEvent;
 import android.view.*;
 import android.widget.*;
 import android.content.pm.*;
@@ -23,12 +24,13 @@ public class MainActivity extends Activity {
     BluetoothSocket btSocket;
     Socket tcpSocket;
     Dashboard dashboard;
+    Bitmap nexusRoad;
     int centerMode=0; // 0 road, 1 analog, 2 digital
     int theme=0; // 0 cyan, 1 amber, 2 emerald
     final Handler ui=new Handler();
     final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);dashboard=new Dashboard();setContentView(dashboard);}
+    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);nexusRoad=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.nexus_road);dashboard=new Dashboard();setContentView(dashboard);}
     void resetReadings(){speed=-1;rpm=-1;coolant=-999;load=-1;fuel=-1;lastSample=0;}
     void stop(){running=false;simulated=false;try{if(btSocket!=null)btSocket.close();}catch(Exception ignored){}try{if(tcpSocket!=null)tcpSocket.close();}catch(Exception ignored){}btSocket=null;tcpSocket=null;}
     void setStatus(String s){status=s;ui.post(new Runnable(){public void run(){dashboard.invalidate();}});}
@@ -68,6 +70,14 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("Choose Music player").setItems(labels,new android.content.DialogInterface.OnClickListener(){
             public void onClick(DialogInterface d,int index){getPreferences(MODE_PRIVATE).edit().putString("musicPackage",all.get(index).activityInfo.packageName).apply();openMusic();}
         }).setNegativeButton("Cancel",null).show();
+    }
+    void mediaKey(int key){
+        try {android.media.AudioManager audio=(android.media.AudioManager)getSystemService(AUDIO_SERVICE);
+            long t=android.os.SystemClock.uptimeMillis();
+            audio.dispatchMediaKeyEvent(new KeyEvent(t,t,KeyEvent.ACTION_DOWN,key,0));
+            audio.dispatchMediaKeyEvent(new KeyEvent(t,t,KeyEvent.ACTION_UP,key,0));
+            toast("Media command sent (player support unverified)");
+        } catch(Exception e){toast("Media control not available");}
     }
     void openMaps(){launch(new String[]{"com.google.android.apps.maps","com.sygic.aura","com.mapswithme.maps.pro"},"");}
     void showMode(){final String[] modes={"DEMO (clearly simulated)","Bluetooth ELM327 (paired)","Phone bridge over Wi-Fi", "Disconnect / live blank", "Reset trip"};new AlertDialog.Builder(this).setTitle("ZomaOS Telemetry Source").setItems(modes,new android.content.DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int which){if(which==0)demo();if(which==1)chooseBluetooth();if(which==2)bridgeDialog();if(which==3){stop();simulated=false;resetReadings();setStatus("DISCONNECTED");}if(which==4){tripKm=0;dashboard.invalidate();}}}).show();}
@@ -113,66 +123,68 @@ public class MainActivity extends Activity {
         void hand(float cx,float cy,float a,float len,float width,int color){line(cx,cy,cx+(float)Math.cos(a)*len,cy+(float)Math.sin(a)*len,color,width);}
         void digital(){String time=new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date());centerText(time,400,239,87,Color.WHITE,true);String date=new SimpleDateFormat("EEEE, dd MMM yyyy",Locale.getDefault()).format(new Date());centerText(date,400,284,20,accent(),false);centerText("LOCAL TIME  /  NO OBD REQUIRED",400,346,13,col("#91AFC4"),true);}
         void road(){
-            // Layered perspective scene: cheap Canvas gradients and polygons, no OpenGL requirement.
-            gradient(212,87,588,390,col("#10243A"),col("#07111F"));
-            glow(400,192,172,Color.argb(72,35,150,210));
-            for(int i=0;i<7;i++){
-                float y=140+i*35;
-                line(214,y,585,y,Color.argb(14,85,180,220),1);
-            }
-            polygon(new float[]{382,130,418,130,570,385,230,385},col("#142A40"));
-            polygon(new float[]{384,130,393,130,334,385,305,385},col("#21384C"));
-            polygon(new float[]{407,130,416,130,495,385,465,385},col("#21384C"));
-            line(382,130,230,385,accent(),2);line(418,130,570,385,accent(),2);
-            for(int i=0;i<5;i++){float yy=165+i*i*13;float width=1+i*2;
-                line(400-width,yy,400+width,yy+9,Color.argb(160,176,220,242),2);}
-            // Vehicle ground shadow and halo.
-            glow(400,317,97,Color.argb(76,45,195,250));
-            fill(Color.argb(160,0,0,0));c.drawOval(new RectF(339,321,461,365),p);
-            // Stylized pseudo-3D vehicle: shaded hood, roof, glass, wheel wells and lamps.
-            polygon(new float[]{368,279,382,247,418,247,432,279,450,314,441,345,359,345,350,314},col("#274D67"));
-            polygon(new float[]{374,279,386,252,414,252,426,279,420,293,380,293},col("#6BC7E8"));
-            polygon(new float[]{382,267,388,255,412,255,418,267,415,279,385,279},col("#0B2037"));
-            polygon(new float[]{352,313,368,281,380,295,376,337,358,344},col("#17344B"));
-            polygon(new float[]{448,313,432,281,420,295,424,337,442,344},col("#17344B"));
-            polygon(new float[]{379,295,421,295,441,326,435,343,365,343,359,326},col("#3D8CAF"));
-            polygon(new float[]{377,302,423,302,435,322,365,322},col("#81CFE9"));
-            polygon(new float[]{366,324,383,325,383,335,362,335},col("#FF5D5F"));
-            polygon(new float[]{417,325,434,324,438,335,417,335},col("#FF5D5F"));
-            box(382,337,418,342,col("#091928"));
-            line(386,250,414,250,Color.WHITE,1);
-            centerText("CINEMATIC ROAD",400,111,15,accent(),true);
-            centerText("VISUAL SCENE  /  NOT LIVE NAVIGATION",400,376,10,col("#8DAFC4"),false);
+            if(nexusRoad!=null){fill(Color.WHITE);c.drawBitmap(nexusRoad,null,new RectF(181,66,559,388),p);}
+            fill(Color.argb(65,0,12,28));c.drawRect(181,66,559,388,p);
+            glow(368,109,120,Color.argb(30,0,195,255));
+            centerText("NEXUS  /  CINEMATIC DRIVE",370,84,12,Color.WHITE,true);
+            box(277,349,463,376,Color.argb(205,4,17,32));
+            centerText("VISUAL SCENE - NOT NAVIGATION",370,367,10,col("#9BD6EC"),true);
         }
         void mediaCard(){
-            box(602,274,786,382,col("#122B40"));
-            glow(626,304,29,Color.argb(60,80,210,245));
-            text("MEDIA",612,294,12,accent(),true);
-            text("Original player",612,315,13,Color.WHITE,true);
-            text("Tap to open music",612,335,11,col("#A9C1D3"),false);
-            text("Hold: select app",612,351,10,col("#8CA8BE"),false);
-            text("Track metadata: not linked",612,369,9,col("#8CA8BE"),false);
+            box(576,155,790,376,col("#10283B"));
+            text("NOW PLAYING",593,180,13,accent(),true);
+            box(591,191,643,244,col("#183E56"));
+            centerText("♪",617,228,32,accent(),true);
+            text("GEELY MUSIC",653,210,13,Color.WHITE,true);
+            text("Track info unavailable",653,229,10,col("#A2B7C6"),false);
+            text("Media keys - experimental",592,267,10,col("#A2B7C6"),false);
+            String[] controls={"PREV","PLAY","NEXT"};
+            for(int i=0;i<3;i++){float l=588+i*66;box(l,280,l+61,319,col("#1C4962"));centerText(controls[i],l+30,304,11,Color.WHITE,true);}
+            box(589,328,776,364,col("#28546B"));centerText("OPEN ORIGINAL PLAYER",683,351,12,Color.WHITE,true);
         }
-        @Override protected void onDraw(Canvas canvas){c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);gradient(0,0,800,480,col("#071728"),col("#030A14"));
-            box(9,9,791,56,col("#10283D"));text("ZOMA OS",24,38,25,accent(),true);text("V5  CINEMATIC COCKPIT",180,37,14,col("#B3D1E5"),true);
-            text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),700,37,23,Color.WHITE,true);
-            String state=simulated?"DEMO / SIMULATED":status;centerText(state,400,77,13,simulated?col("#FFBC68"):col("#9DB7C8"),true);
-            box(11,90,203,385,col("#0D2031"));box(597,90,789,385,col("#0D2031"));
-            info(19,100,"SPEED",value(speed),"km/h");info(19,185,"COOLANT",coolant==-999?"--":String.valueOf(coolant),"C");
-            info(19,270,"TRIP",String.format(Locale.US,"%.1f",tripKm),"km");
-            info(605,100,"ENGINE RPM",value(rpm),"rpm");info(605,185,"ENGINE LOAD",value(load),"%");mediaCard();
+        @Override protected void onDraw(Canvas canvas){
+            c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);
+            gradient(0,0,800,480,col("#040D1B"),col("#081C2A"));
+            glow(400,15,360,Color.argb(36,5,171,233));
+            box(9,8,791,59,col("#0B1C2B"));
+            text("ZomaOS",23,37,26,Color.WHITE,true);
+            text("NEXUS V6",26,53,11,accent(),true);
+            text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),691,39,26,Color.WHITE,true);
+            String state=simulated?"DEMO - SIMULATED":status;
+            centerText(state,403,36,12,simulated?col("#FFBC68"):col("#91B9D0"),true);
+            box(10,68,172,386,col("#0E2232"));
+            text("VEHICLE",24,91,12,accent(),true);
+            text(value(speed),28,153,55,Color.WHITE,true);
+            text("km/h",111,151,13,col("#9DB8C7"),false);
+            arc(84,143,65,192,155,accent(),4);
+            text("RPM",24,211,12,col("#A4C3D6"),true);
+            text(value(rpm),24,244,28,Color.WHITE,true);
+            line(24,260,157,260,col("#24485E"),2);
+            text("COOLANT",24,284,12,col("#A4C3D6"),true);
+            text(coolant==-999?"--":String.valueOf(coolant)+" C",24,310,23,Color.WHITE,true);
+            text("TRIP",24,344,12,col("#A4C3D6"),true);
+            text(String.format(Locale.US,"%.1f km",tripKm),24,371,21,Color.WHITE,true);
+            box(569,68,790,145,col("#0E2232"));
+            text("QUICK STATUS",586,91,12,accent(),true);
+            text("Engine load: "+value(load)+" %",585,115,14,Color.WHITE,false);
+            text("OBD: "+(simulated?"SIMULATED":status),585,134,10,col("#9DB8C7"),false);
             if(centerMode==0)road();else if(centerMode==1)analog();else digital();
-            box(9,394,791,472,col("#10283D"));String[] buttons={"OBD","AUTO","VIEW","MUSIC","MAPS","APPS","THEME"};
-            for(int i=0;i<buttons.length;i++){float l=16+i*111;box(l,405,l+103,462,i==1?col("#235779"):col("#1A374E"));centerText(buttons[i],l+51,438,15,Color.WHITE,true);}
-            if(simulated){box(300,365,500,390,col("#74461E"));centerText("SIMULATED / NOT LIVE",400,383,13,Color.WHITE,true);}
-            c.restore();postInvalidateDelayed(1000);}
+            mediaCard();
+            box(9,395,791,473,col("#0D2537"));
+            String[] buttons={"OBD","AUTO","VIEW","MUSIC","MAPS","APPS","THEME"};
+            for(int i=0;i<buttons.length;i++){float l=16+i*111;
+                box(l,405,l+103,461,i==1?col("#175D85"):col("#15374E"));
+                centerText(buttons[i],l+51,439,15,Color.WHITE,true);}
+            if(simulated){box(288,370,472,393,col("#754620"));centerText("SIMULATED DATA",380,386,12,Color.WHITE,true);}
+            c.restore();postInvalidateDelayed(1000);
+        }
         long touchDown=0;
         @Override public boolean onTouchEvent(MotionEvent e){
             if(e.getAction()==MotionEvent.ACTION_DOWN){touchDown=System.currentTimeMillis();return true;}
             if(e.getAction()==MotionEvent.ACTION_UP && System.currentTimeMillis()-touchDown>650){
                 float xx=e.getX()*800f/getWidth(), yy=e.getY()*480f/getHeight();
-                if((yy>=394&&xx>=340&&xx<455)||(xx>=597&&yy>=274&&yy<=385)){chooseAnyMusicApp();return true;}
+                if((yy>=394&&xx>=340&&xx<455)||(xx>=576&&yy>=155&&yy<=376)){chooseAnyMusicApp();return true;}
             }
-if(e.getAction()!=MotionEvent.ACTION_UP)return true;float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();if(x>=597&&y>=274&&y<=385){openMusic();return true;}if(y>=394){int i=(int)((x-16)/111);switch(i){case 0:showMode();break;case 1:launch(new String[]{"me.ri3d.openauto"},"");break;case 2:chooseCenterMode();break;case 3:openMusic();break;case 4:openMaps();break;case 5:launch(new String[]{},"apps");break;case 6:chooseTheme();break;}}return true;}
+if(e.getAction()!=MotionEvent.ACTION_UP)return true;float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();if(x>=588&&x<=790&&y>=280&&y<=319){int slot=(int)((x-588)/66);mediaKey(slot==0?KeyEvent.KEYCODE_MEDIA_PREVIOUS:slot==1?KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:KeyEvent.KEYCODE_MEDIA_NEXT);return true;}if(x>=576&&x<=790&&y>=155&&y<=376){openMusic();return true;}if(y>=394){int i=(int)((x-16)/111);switch(i){case 0:showMode();break;case 1:launch(new String[]{"me.ri3d.openauto"},"");break;case 2:chooseCenterMode();break;case 3:openMusic();break;case 4:openMaps();break;case 5:launch(new String[]{},"apps");break;case 6:chooseTheme();break;}}return true;}
     }
 }

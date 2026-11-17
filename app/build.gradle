@@ -6,7 +6,7 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 13
-        versionName '7.3-concept'
+        versionCode 14
+        versionName '8.0-beta'
     }
 }

@@ -1,21 +1,27 @@
-# ZomaOS NEXUS V7.3 — Exact Concept Artwork Build
+# ZomaOS NEXUS V8 — Functional Beta
 
-Android 4.1 / API 16, 800x480. This project **uses the exact user-approved concept PNG** as its background artwork. It does not reproduce every rendered element as a functional widget. The analog watch, vehicle and atmospheric lighting are static image elements. The two baked-in clocks and example music panel are covered by real-time time and media widgets; bottom climate strip is covered because no car HVAC integration is available. The wallpaper also contains example weather/USB labels in non-interactive regions: those are visual artwork, not live data.
+For Geely X7 stock head unit, Android 4.1 / API 16, 800×480.
 
-### Working features
-- USB browser with selectable mounted storage paths and folders; plays common audio formats directly from readable file paths via MediaPlayer, including next/previous, pause and play. Format decoding depends on factory Android firmware.
-- Factory FM Radio via `com.spd.radio` launch intent.
-- Factory Geely Music via `com.spd.media` launch intent.
-- Android Auto via `me.ri3d.openauto`.
-- OBD existing modes retained; no fabricated telemetry.
-- 800x480 full-screen exact reference image, overlay widgets and touch targets.
+## Changes from V7.3
+- Keeps exact approved cinematic concept background artwork, with working overlays; removes duplicated bottom row.
+- Live analog clock covers the static clock hands from the concept image. Real hour/minute/second hands.
+- ZomaOS Settings (left gear): five accent themes, show/hide live analog clock, legacy center display mode, music selection, USB browsing, App Center, maintenance, OBD, Android system settings, reset defaults.
+- App Center lists actual installed launchable applications and launches them.
+- Music sidebar opens Entertainment Hub; USB browser plays actual readable files, MediaStore-only error no longer blocks USB access.
+- USB and indexed local playback: embedded MP3 artwork if available, interactive seek area (drag along 121–445 x / 273–303 y), next/previous/play/pause.
+- Main visual buttons mapped to Music, FM Radio, Android Auto, OBD and Apps.
+- Maintenance Center: manually enter current odometer and odometer at last oil service, shows oil service interval of 7000 km as **editable-in-code default only**, not a recommendation. No automatic mileage tracking or false GPS/OBD odometer.
+- Best-effort media-key event handling when the head unit delivers standard Android key events to this Activity. Factory steering-wheel controls may remain unsupported.
+- Existing Bluetooth ELM327 and phone bridge telemetry code retained; requires real compatible hardware and connection. Demo clearly labelled.
 
-### Limitations
-- Factory Geely Music metadata and steering-wheel media controls remain unintegrated.
-- The reference image is 1600x960 and scales down to 800x480. Some decorative text remains baked into artwork.
-- No live weather, vehicle HVAC control, live analog hands, or simulated track information.
-- Large folders are limited to 2000 audio files for memory use. Direct filesystem access requires readable USB mount; USB path availability varies by firmware.
-- Source has not been built/tested on the head unit; run the included GitHub Actions workflow and test USB, radio, Auto, and player on-device.
+## Honest limitations
+- **Source beta, NOT built or tested on device.** Run GitHub Actions to build. No APK included.
+- The concept PNG is a static artwork, including some visual baked-in decorations. Themes recolor live elements only, not pixels of background.
+- No real radio station metadata or factory player metadata integration; Radio opens `com.spd.radio`.
+- No GPS or guaranteed ECU odometer. OBD speed/RPM/temp require a connected and supported adapter.
+- Album artwork appears only when embedded in playable files and decodable by Android 4.1.
+- Media key handling is best effort; MCU/steering wheel may never dispatch standard keys to the app.
+- USB paths and codecs depend on firmware. Avoid interacting with screen while driving.
 
-### GitHub
-Upload all files from the root of this ZIP into the repo, including `.github/workflows/build-apk.yml`, then trigger Actions.
+## Build
+Upload the **contents** of this folder to GitHub repository root. The included `.github/workflows/build-apk.yml` builds a debug APK using Gradle 8.7 and JDK 17.

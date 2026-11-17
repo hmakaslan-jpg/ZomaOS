@@ -1,0 +1,9 @@
+ZomaOS NEXUS V9 - Stabilization source
+- Long-press any bottom dock shortcut for Set Program / Restore Default.
+- Custom shortcut package saved in Android preferences; app icon and label rendered on dock.
+- Removed V7.3 baked header from Night background asset.
+- Retained tested radio launch via com.spd.radio. NO undocumented MCU controls added.
+- Preserved existing USB folder memory, audio focus, oil maintenance, and return-to-dashboard screens.
+- Settings dialog window sizing sequence corrected.
+- Source only. Not built or tested on the Geely Android 4.1 head unit.
+- Existing APK update depends on signing key compatibility.

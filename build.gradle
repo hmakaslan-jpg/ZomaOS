@@ -1,12 +1,3 @@
-apply plugin: 'com.android.application'
-android {
-    namespace 'com.zoma.os'
-    compileSdk 35
-    defaultConfig {
-        applicationId 'com.zoma.os'
-        minSdk 16
-        targetSdk 22
-        versionCode 20
-        versionName '10.0-test'
-    }
+plugins {
+    id 'com.android.application' version '8.6.1' apply false
 }

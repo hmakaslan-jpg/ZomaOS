@@ -6,7 +6,7 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 28
-        versionName '12.4-ui-touch-fixes'
+        versionCode 29
+        versionName '12.5-approved-concept'
     }
 }

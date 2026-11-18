@@ -47,8 +47,8 @@ public class MainActivity extends Activity {
     AudioManager audioManager; boolean hasAudioFocus=false; boolean clock12=false; int appearance=0;
     AudioManager.OnAudioFocusChangeListener focusListener=new AudioManager.OnAudioFocusChangeListener(){public void onAudioFocusChange(int change){if(change==AudioManager.AUDIOFOCUS_LOSS||change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT){pauseAudio();}}};
     // User-configurable dock. Empty preference means the original built-in action.
-    final String[] dockDefaults={"USB FILES","FM RADIO","ANDROID AUTO","OBD","APPS"};
-    final int[] dockEdges={103,239,372,509,640,793};
+    final String[] dockDefaults={"USB FILES","ANDROID AUTO","OBD","APPS"};
+    final int[] dockEdges={96,264,447,620,795};
     boolean dockLongPressed=false;
     final Handler dockHandler=new Handler();
     Runnable pendingDockLongPress;
@@ -65,9 +65,9 @@ public class MainActivity extends Activity {
             if(intent!=null){stopAudio();startActivity(intent);return;}
             toast("App unavailable. Restore shortcut in long press.");return;
         }
-        if(index==0)openRememberedUsb();else if(index==1)openRadio();
-        else if(index==2)launch(new String[]{"me.ri3d.openauto"},"");
-        else if(index==3)showMode();else showAppCenter();
+        if(index==0)openRememberedUsb();
+        else if(index==1){stopAudio();launch(new String[]{"me.ri3d.openauto"},"");}
+        else if(index==2)showMode();else if(index==3)showAppCenter();
     }
     void editDock(final int index){
         new AlertDialog.Builder(this).setTitle("Shortcut: "+dockLabel(index))
@@ -87,7 +87,7 @@ public class MainActivity extends Activity {
             getPreferences(MODE_PRIVATE).edit().putString("dock_pkg_"+index,pkg).apply();dashboard.invalidate();
         }}).setNegativeButton("Cancel",null).show();
     }
-    int dockIndex(float x){for(int i=0;i<5;i++)if(x>=dockEdges[i]&&x<dockEdges[i+1])return i;return -1;}
+    int dockIndex(float x){for(int i=0;i<dockDefaults.length;i++)if(x>=dockEdges[i]&&x<dockEdges[i+1])return i;return -1;}
     int localIndex=-1;
     boolean localMode=false;
 
@@ -196,6 +196,11 @@ public class MainActivity extends Activity {
         sendOrderedBroadcast(intent,null);
     }
     // V12: Factory tuner stays authoritative. No guessed frequency or unsupported MCU commands.
+    void openSystemSettings(String action){
+        try{startActivity(new Intent(action));}
+        catch(Exception e){try{startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));}
+        catch(Exception ignored){toast("System settings unavailable");}}
+    }
     void openRadio(){
         try {
             Intent i=getPackageManager().getLaunchIntentForPackage("com.spd.radio");
@@ -395,14 +400,14 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||keyCode==KeyEvent.KEYCODE_HEADSETHOOK){if(localPlayer!=null){togglePlayback();return true;}}
         return super.onKeyDown(keyCode,event);
     }
-    void chooseAppearance(){final String[] choices={"Electric Blue", "Pearl Titanium", "Royal Blue Twilight"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
+    void chooseAppearance(){final String[] choices={"Electric Blue", "Pearl Titanium", "Royal Blue Twilight", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
         final String[] items={"Appearance • Night / Daylight", "Accent colors", "Clock • 12 / 24 hour", "Analog clock • Show / hide", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
-        final Dialog dialog=new Dialog(this);dialog.setTitle("ZomaOS V9 • Settings");
+        final Dialog dialog=new Dialog(this);dialog.setTitle("ZomaOS V12.4 • Settings");
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(16,10,16,10);panel.setBackgroundColor(Color.rgb(16,39,59));
-        TextView heading=new TextView(this);heading.setText("ZOMAOS V9   /   SETTINGS");heading.setTextSize(22);heading.setTextColor(Color.WHITE);heading.setPadding(12,8,8,14);panel.addView(heading);
+        TextView heading=new TextView(this);heading.setText("ZOMAOS V12.4   /   SETTINGS");heading.setTextSize(22);heading.setTextColor(Color.WHITE);heading.setPadding(12,8,8,14);panel.addView(heading);
         ListView list=new ListView(this);list.setCacheColorHint(Color.TRANSPARENT);list.setDividerHeight(1);list.setScrollingCacheEnabled(false);
         ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,items){@Override public View getView(int pos,View convert,android.view.ViewGroup parent){TextView v=(TextView)super.getView(pos,convert,parent);v.setTextColor(Color.WHITE);v.setTextSize(17);v.setPadding(14,10,8,10);return v;}};
         list.setAdapter(adapter);panel.addView(list,new LinearLayout.LayoutParams(-1,0,1));
@@ -451,7 +456,7 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("Maintenance Center").setMessage(msg).setPositiveButton("Update odometer",new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int w){maintenanceInput("Current odometer (km)","odo",odo);}}).setNeutralButton("Oil service",new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int w){maintenanceInput("Odometer at last oil change (km)","oil_last",last);}}).setNegativeButton("Close",null).show();
     }
     void maintenanceInput(String title,final String key,int old){final EditText input=new EditText(this);input.setInputType(2);if(old>=0)input.setText(String.valueOf(old));new AlertDialog.Builder(this).setTitle(title).setView(input).setPositiveButton("Save",new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int w){try{int val=Integer.parseInt(input.getText().toString().trim());if(val<0)throw new Exception();getPreferences(MODE_PRIVATE).edit().putInt(key,val).apply();maintenanceCenter();}catch(Exception e){toast("Enter a valid nonnegative kilometer reading");}}}).setNegativeButton("Cancel",null).show();}
-    void seekMusic(float x){if(localPlayer==null)return;try{int duration=localPlayer.getDuration();if(duration>0){float f=Math.max(0,Math.min(1,(x-121f)/324f));localPlayer.seekTo((int)(duration*f));dashboard.invalidate();}}catch(Exception e){toast("Seeking unavailable");}}
+    void seekMusic(float x){if(localPlayer==null)return;try{int duration=localPlayer.getDuration();if(duration>0){float f=Math.max(0,Math.min(1,(x-193f)/210f));localPlayer.seekTo((int)(duration*f));dashboard.invalidate();}}catch(Exception e){toast("Seeking unavailable");}}
     void openMaps(){launch(new String[]{"com.google.android.apps.maps","com.sygic.aura","com.mapswithme.maps.pro"},"");}
     void showMode(){final String[] modes={"DEMO (clearly simulated)","Bluetooth ELM327 (paired)","Phone bridge over Wi-Fi", "Disconnect / live blank", "Reset trip"};new AlertDialog.Builder(this).setTitle("ZomaOS Telemetry Source").setItems(modes,new android.content.DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int which){if(which==0)demo();if(which==1)chooseBluetooth();if(which==2)bridgeDialog();if(which==3){stop();simulated=false;resetReadings();setStatus("DISCONNECTED");}if(which==4){tripKm=0;dashboard.invalidate();}}}).show();}
     void demo(){stop();resetReadings();simulated=true;setStatus("DEMO / NOT REAL DATA");new Thread(new Runnable(){public void run(){int i=0;while(simulated){int s=(int)(35+25*Math.sin(i/7.0));setSample(s,800+s*35,85+(i%7),25+(i%35),60);i++;try{Thread.sleep(900);}catch(Exception e){break;}}}}).start();}
@@ -483,6 +488,18 @@ public class MainActivity extends Activity {
         void fill(int color){p.setColor(color);p.setStyle(Paint.Style.FILL);p.setShader(null);}
         void box(float l,float t,float r,float b,int color){fill(color);c.drawRoundRect(new RectF(l,t,r,b),13,13,p);}
         void text(String v,float x,float y,float size,int color,boolean bold){fill(color);p.setTypeface(Typeface.create("sans-serif",bold?Typeface.BOLD:Typeface.NORMAL));p.setTextSize(size);c.drawText(v,x,y,p);}
+        void fitText(String v,float x,float y,float size,float maxWidth,int color,boolean bold){
+            fill(color);p.setTypeface(Typeface.create("sans-serif",bold?Typeface.BOLD:Typeface.NORMAL));
+            p.setTextSize(size);
+            if(p.measureText(v)>maxWidth)p.setTextSize(size*maxWidth/p.measureText(v));
+            c.drawText(v,x,y,p);
+        }
+        void fitCenteredText(String v,float x,float y,float size,float maxWidth,int color,boolean bold){
+            fill(color);p.setTypeface(Typeface.create("sans-serif",bold?Typeface.BOLD:Typeface.NORMAL));
+            p.setTextSize(size);float measured=p.measureText(v);
+            if(measured>maxWidth)p.setTextSize(size*maxWidth/measured);
+            c.drawText(v,x-p.measureText(v)/2,y,p);
+        }
         void centerText(String v,float x,float y,float size,int color,boolean bold){fill(color);p.setTypeface(Typeface.create("sans-serif",bold?Typeface.BOLD:Typeface.NORMAL));p.setTextSize(size);c.drawText(v,x-p.measureText(v)/2,y,p);}
         void line(float x,float y,float xx,float yy,int color,float width){fill(color);p.setStrokeWidth(width);c.drawLine(x,y,xx,yy,p);}
         void arc(float cx,float cy,float radius,float from,float sweep,int color,float width){fill(color);p.setStyle(Paint.Style.STROKE);p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeWidth(width);c.drawArc(new RectF(cx-radius,cy-radius,cx+radius,cy+radius),from,sweep,false,p);p.setStyle(Paint.Style.FILL);}
@@ -588,14 +605,83 @@ public class MainActivity extends Activity {
         // Hit regions match onTouchEvent; no text or controls are baked into artwork.
         // Exact-reference cockpit: the visual chrome comes from the approved 800x480 artwork.
         // Dynamic text and clock hands are always rendered live. Hit regions below are real.
+        void drawLiveProgress(float left,float top,float right,boolean active){
+            fill(col("#142D47"));c.drawRoundRect(new RectF(left,top,right,top+6),3,3,p);
+            if(!active||localPlayer==null){text("--:--",left,top+24,10,col("#8FA9BE"),false);return;}
+            try{
+                int duration=localPlayer.getDuration();int position=localPlayer.getCurrentPosition();
+                if(duration<=0)return;
+                float f=Math.max(0f,Math.min(1f,position/(float)duration));
+                fill(col("#48E5FF"));c.drawRoundRect(new RectF(left,top,left+(right-left)*f,top+6),3,3,p);
+                fill(Color.WHITE);c.drawCircle(left+(right-left)*f,top+3,5,p);
+                text(String.format(Locale.ENGLISH,"%d:%02d",position/60000,(position/1000)%60),left,top+24,10,Color.WHITE,false);
+                String end=String.format(Locale.ENGLISH,"%d:%02d",duration/60000,(duration/1000)%60);
+                text(end,right-29,top+24,10,Color.WHITE,false);
+            }catch(Exception ignored){}
+        }
+        // V12.3 Carbon Sport: lightweight vector UI, no baked-in controls.
+        // All interactive positions match the existing Dashboard touch handler.
+        void drawCarbon(){
+            int bg=col("#080B11"), panel=col("#141A23"), edge=col("#39404C");
+            int red=col("#FF304B"), white=col("#F3F6FB"), muted=col("#A8B2C0");
+            gradient(0,0,800,480,bg,col("#1A0C14"));
+            // Subtle diagonal carbon weave; deliberately low contrast.
+            for(int k=-480;k<850;k+=12){line(k,0,k+480,480,col("#141820"),1);}
+            box(0,0,800,54,col("#0B1018"));line(0,53,800,53,red,1.5f);
+            text("Zoma",108,37,27,white,true);text("OS",183,37,27,red,true);
+            fitCenteredText(clockText(),741,37,25,94,white,true);
+            text("BT",576,34,13,muted,true);text("Wi-Fi",622,34,13,muted,true);
+            // Seven sidebar hit zones, consistent with V11.
+            String[] side={"HOME","MUSIC","RADIO","AUTO","OBD","APPS","SET"};
+            box(0,55,95,434,col("#0B1018"));
+            for(int i=0;i<7;i++){
+                int yy=99+i*51;
+                if(i==0){box(7,yy-28,89,yy+18,col("#24121B"));line(9,yy+18,87,yy+18,red,2);}
+                centerText(side[i],48,yy+1,11,i==0?red:white,true);
+            }
+            // The central stage uses a photograph only as an optional subdued visual.
+            if(daySuv!=null){
+                p.setAlpha(105);c.drawBitmap(daySuv,new Rect(230,75,710,365),new RectF(103,65,428,273),p);p.setAlpha(255);
+            }
+            text("CARBON SPORT",116,88,15,red,true);
+            text("GEELY X7",225,263,18,white,true);
+            // Music: progress is always computed from actual local player state.
+            box(430,76,786,273,panel);line(440,76,776,76,red,2);
+            text("USB MUSIC",447,105,16,white,true);
+            String song=(usbMode||localMode)?trackTitle:"Select USB music";
+            if(song==null||song.length()==0)song="Select USB music";
+            if(song.length()>29)song=song.substring(0,28)+"…";
+            text(song,447,134,13,muted,false);
+            drawLiveProgress(447,173,765,usbMode||localMode);
+            centerText("PREV",500,248,15,white,true);
+            centerText("PLAY",610,248,16,red,true);
+            centerText("NEXT",719,248,15,white,true);
+            // Radio: do not invent station frequency or metadata from the MCU.
+            box(104,282,425,366,panel);line(113,282,415,282,red,2);
+            text("FM RADIO",119,312,17,white,true);
+            text(getPreferences(MODE_PRIVATE).getString("last_audio_source","").equals("fm")?"RADIO SELECTED":"OPEN FACTORY RADIO",119,341,12,muted,false);
+            box(430,282,786,366,panel);line(440,282,776,282,red,2);
+            text("ZOMAOS",450,314,17,white,true);
+            text(new SimpleDateFormat("EEE, dd MMM yyyy",Locale.ENGLISH).format(new Date()),450,341,13,muted,false);
+            // Four dock buttons use the same dockEdges hit boxes as all other themes.
+            for(int i=0;i<4;i++){
+                float l=dockEdges[i]+2,r=dockEdges[i+1]-5;
+                box(l,382,r,425,panel);line(l+8,424,r-8,424,red,2);
+                centerText(dockLabel(i),(l+r)/2,408,13,white,true);
+            }
+            centerText("ZomaOS  |  CARBON SPORT",445,458,12,muted,false);
+        }
         void drawV11(){
+            if(appearance==3){drawCarbon();return;}
             boolean pearl=appearance==1;
             Bitmap scene=appearance==1?exactPearl:(appearance==2?exactTwilight:exactElectric);
             if(scene!=null){fill(Color.WHITE);c.drawBitmap(scene,null,new RectF(0,0,800,480),p);}
             int ink=pearl?col("#123B66"):Color.WHITE;
             int accent=pearl?col("#007FAD"):col("#73F4FF");
-            text(clockText(),126,137,51,ink,true);
-            text(clockText(),706,36,27,ink,true);
+            // V12.1: fit live clock within the two artwork clock slots.
+            String time=clockText();
+            fitCenteredText(time,251,137,49,250,ink,true);
+            fitCenteredText(time,747,36,25,82,ink,true);
             String song=(usbMode||localMode)?trackTitle:"Choose your music";
             if(song==null||song.length()==0)song="Choose your music";
             if(song.length()>22)song=song.substring(0,21)+"…";
@@ -604,29 +690,46 @@ public class MainActivity extends Activity {
             if(singer==null)singer="";
             if(singer.length()>31)singer=singer.substring(0,30)+"…";
             text(singer,193,278,10,ink,false);
+            // Live progress for ZomaOS local/USB player. Factory player metadata is not fabricated.
+            drawLiveProgress(193,307,403,usbMode||localMode);
             // Radio and Bluetooth state cannot be verified through the factory MCU here.
             // Never show the reference image's illustrative 90.90 MHz as a real frequency.
-            text("FM / BT",485,306,19,accent,true);
+            text(getPreferences(MODE_PRIVATE).getString("last_audio_source","").equals("fm")?"FM RADIO":"FM / BT",472,306,18,accent,true);
             if(showAnalog){
+                // The V11 artwork contains a fixed grey hand. Cover its interior
+                // with a fresh opaque face, then draw only live hands.
+                float cx=703,cy=289;
+                fill(pearl?col("#F0F5FA"):col("#073968"));
+                c.drawCircle(cx,cy,64,p);
+                fill(pearl?col("#284A6A"):col("#D7F7FF"));
+                p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(1.5f);
+                c.drawCircle(cx,cy,63,p);p.setStyle(Paint.Style.FILL);
+                for(int i=0;i<12;i++){
+                    float a=(float)(i*Math.PI/6-Math.PI/2);
+                    float x1=cx+(float)Math.cos(a)*53, y1=cy+(float)Math.sin(a)*53;
+                    float x2=cx+(float)Math.cos(a)*59, y2=cy+(float)Math.sin(a)*59;
+                    line(x1,y1,x2,y2,ink,2);
+                }
+                centerText("12",cx,cy-40,12,ink,true);
+                centerText("3",cx+44,cy+5,12,ink,true);
+                centerText("6",cx,cy+49,12,ink,true);
+                centerText("9",cx-44,cy+5,12,ink,true);
                 Calendar t=Calendar.getInstance();
                 float ss=t.get(Calendar.SECOND),mm=t.get(Calendar.MINUTE)+ss/60f,hh=t.get(Calendar.HOUR)+mm/60f;
-                float cx=703,cy=289;
-                hand(cx,cy,(float)(hh*Math.PI/6-Math.PI/2),29,5,ink);
-                hand(cx,cy,(float)(mm*Math.PI/30-Math.PI/2),45,3,ink);
-                hand(cx,cy,(float)(ss*Math.PI/30-Math.PI/2),53,1,accent);
+                hand(cx,cy,(float)(hh*Math.PI/6-Math.PI/2),30,5,ink);
+                hand(cx,cy,(float)(mm*Math.PI/30-Math.PI/2),43,3,ink);
+                hand(cx,cy,(float)(ss*Math.PI/30-Math.PI/2),49,1,accent);
                 fill(accent);c.drawCircle(cx,cy,4,p);
             }
-            // User-customized dock labels overlay the decorative default shortcuts.
+            // Repaint the complete shortcut hit areas with opaque panels.
+            // This removes the white-square/artwork bleed when a shortcut is customized.
             for(int i=0;i<4;i++){
-                String pkg=getPreferences(MODE_PRIVATE).getString("dock_pkg_"+i,"");
-                if(pkg.length()>0){
-                    float x=180+i*146;
-                    fill(pearl?col("#E8F6FE"):col("#073A72"));
-                    c.drawRoundRect(new RectF(x-62,382,x+62,419),9,9,p);
-                    String label=dockLabel(i);
-                    if(label.length()>13)label=label.substring(0,12)+"…";
-                    centerText(label,x,405,12,ink,true);
-                }
+                float l=dockEdges[i]+3,r=dockEdges[i+1]-4;
+                box(l,382,r,420,pearl?col("#D8E8F2"):col("#10375D"));
+                line(l+9,419,r-9,419,accent,2);
+                String label=dockLabel(i);
+                if(label.length()>17)label=label.substring(0,16)+"…";
+                fitCenteredText(label,(l+r)/2,405,13,r-l-12,ink,true);
             }
         }
         @Override protected void onDraw(Canvas canvas){
@@ -637,7 +740,7 @@ public class MainActivity extends Activity {
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();
             int a=e.getAction();
             if(a==MotionEvent.ACTION_DOWN){
-                if(y>=353&&y<=420&&x>=dockEdges[0]&&x<dockEdges[5]){
+                if(y>=353&&y<=420&&x>=dockEdges[0]&&x<dockEdges[4]){
                     pressedDock=dockIndex(x);
                     dockLongPressed=false;
                     final int idx=pressedDock;
@@ -645,18 +748,31 @@ public class MainActivity extends Activity {
                     dockHandler.postDelayed(pendingDockLongPress,650);
                     return true;
                 }
-                if(y>=312&&y<=337&&x>=190&&x<=366){draggingSeek=true;return true;}
+                if((y>=290&&y<=327&&x>=190&&x<=409&&appearance!=3)||(appearance==3&&y>=165&&y<=204&&x>=447&&x<=765)){draggingSeek=true;return true;}
                 return true;
             }
             if(a==MotionEvent.ACTION_CANCEL){
                 if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
                 pressedDock=-1;draggingSeek=false;return true;
             }
+            if(a==MotionEvent.ACTION_MOVE){
+                if(draggingSeek){
+                    float mapped=appearance==3?193f+(x-447f)*210f/318f:x;
+                    seekMusic(mapped);return true;
+                }
+                if(pressedDock>=0&&(y<353||y>420||dockIndex(x)!=pressedDock)){
+                    if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
+                    pendingDockLongPress=null;pressedDock=-1;
+                }
+                return true;
+            }
             if(a!=MotionEvent.ACTION_UP)return true;
             if(pendingDockLongPress!=null){dockHandler.removeCallbacks(pendingDockLongPress);pendingDockLongPress=null;}
             if(pressedDock>=0){int i=pressedDock;pressedDock=-1;
                 if(!dockLongPressed)activateDock(i);return true;}
-            if(draggingSeek){draggingSeek=false;seekMusic(121f+(x-190f)*324f/176f);return true;}
+            if(draggingSeek){draggingSeek=false;seekMusic(appearance==3?193f+(x-447f)*210f/318f:x);return true;}
+            if(y<55&&x>=565&&x<610){openSystemSettings("android.settings.BLUETOOTH_SETTINGS");return true;}
+            if(y<55&&x>=620&&x<675){openSystemSettings("android.settings.WIFI_SETTINGS");return true;}
             if(x<90){
                 if(y<120)return true;
                 if(y<180){musicHub();return true;}
@@ -666,13 +782,24 @@ public class MainActivity extends Activity {
                 if(y<388){showAppCenter();return true;}
                 showZomaSettings();return true;
             }
+            if(appearance==3){
+                if(y>=165&&y<=204&&x>=447&&x<=765){seekMusic(193f+(x-447f)*210f/318f);return true;}
+                if(y>=210&&y<=273&&x>=440&&x<=786){
+                    if(x<554){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}
+                    else if(x<664)togglePlayback();
+                    else {if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}
+                    return true;
+                }
+                if(y>=282&&y<367&&x>=104&&x<=425){openRadio();return true;}
+                return true;
+            }
             if(y>=337&&y<379&&x>=155&&x<=405){
                 if(x<236){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}
                 else if(x<313)togglePlayback();
                 else {if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}
                 return true;
             }
-            if(y>=233&&y<367&&x>=429&&x<=613){openRadio();return true;}
+            if((y>=233&&y<367&&x>=429&&x<=613)||(appearance==3&&y>=74&&y<225&&x>=430&&x<=613)){openRadio();return true;}
             if(y>=230&&y<310&&x>=105&&x<=423){if(usbMode)showUsbTracks();else openRememberedUsb();return true;}
             if(y<55&&x<380){showZomaSettings();return true;}
             return true;

@@ -1,0 +1,1 @@
+V11 ENGINEERING CHECKPOINT - NOT FINAL. Java source edited and syntax balance inspected. No Android SDK/Gradle compilation available in this environment. No actual 800x480 rendering verification. FM and Bluetooth state detection unimplemented. Do not replace working V9 until compiled and tested.

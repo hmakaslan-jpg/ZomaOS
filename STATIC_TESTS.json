@@ -1,0 +1,13 @@
+{
+  "USB path persisted": true,
+  "USB position persisted": true,
+  "USB playing state persisted": true,
+  "USB startup gated on source": true,
+  "USB mount retry": true,
+  "USB seek restore": true,
+  "FM selected source prevents USB resume": true,
+  "On pause state saved": true,
+  "All three themes present": true,
+  "APK built": false,
+  "FM/BT live state detected": false
+}

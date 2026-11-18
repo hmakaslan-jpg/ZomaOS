@@ -30,7 +30,7 @@ public class MainActivity extends Activity {
     BluetoothSocket btSocket;
     Socket tcpSocket;
     Dashboard dashboard;
-    Bitmap nexusRoad; Bitmap signatureClock; Bitmap signatureDigital; Bitmap daySuv;
+    Bitmap exactElectric; Bitmap exactPearl; Bitmap exactTwilight; Bitmap nexusRoad; Bitmap signatureClock; Bitmap signatureDigital; Bitmap daySuv; Bitmap v11Night; Bitmap v11Day;
     String trackTitle="", trackArtist="", metadataSource="";
     long metadataTime=0;
     BroadcastReceiver musicInfoReceiver;
@@ -40,6 +40,9 @@ public class MainActivity extends Activity {
     ArrayList<Long> localIds=new ArrayList<Long>();
     ArrayList<File> usbTracks=new ArrayList<File>();
     int usbIndex=-1; boolean usbMode=false;
+    boolean resumeAttempted=false;
+    final Handler resumeHandler=new Handler();
+    final Runnable resumeTick=new Runnable(){public void run(){saveUsbPlaybackState();resumeHandler.postDelayed(this,5000);}};
     Bitmap concept; Bitmap dayConcept; Bitmap albumArt; boolean draggingSeek=false; boolean showAnalog=true; int selectedPage=0;
     AudioManager audioManager; boolean hasAudioFocus=false; boolean clock12=false; int appearance=0;
     AudioManager.OnAudioFocusChangeListener focusListener=new AudioManager.OnAudioFocusChangeListener(){public void onAudioFocusChange(int change){if(change==AudioManager.AUDIOFOCUS_LOSS||change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT){pauseAudio();}}};
@@ -94,7 +97,7 @@ public class MainActivity extends Activity {
     final Handler ui=new Handler();
     final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);nexusRoad=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.nexus_road);signatureClock=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.signature_clock);signatureDigital=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.signature_digital);concept=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.concept_v73);dayConcept=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.concept_day);daySuv=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.day_suv);showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);startMusicDiscovery();restoreUsbFolder();restoreUsbPlaybackState();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);nexusRoad=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.nexus_road);signatureClock=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.signature_clock);signatureDigital=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.signature_digital);concept=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.concept_v73);dayConcept=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.concept_day);exactElectric=BitmapFactory.decodeResource(getResources(),R.drawable.v11_exact_electric);exactPearl=BitmapFactory.decodeResource(getResources(),R.drawable.v11_exact_pearl);exactTwilight=BitmapFactory.decodeResource(getResources(),R.drawable.v11_exact_twilight);daySuv=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.day_suv);v11Night=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.v11_night_hero);v11Day=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.v11_day_hero);showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);startMusicDiscovery();restoreUsbFolder();resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
     // Discovery only: some players publish public metadata broadcasts, many factory players do not.
     void startMusicDiscovery(){
         IntentFilter filter=new IntentFilter();
@@ -118,10 +121,10 @@ public class MainActivity extends Activity {
             android.util.Log.w("ZomaOS","Metadata receiver unavailable",err);musicInfoReceiver=null;
         }
     }
-    @Override protected void onPause(){super.onPause();saveUsbPlaybackState();}
+    @Override protected void onPause(){saveUsbPlaybackState();super.onPause();pauseAudio();}
     @Override protected void onDestroy(){
         if(musicInfoReceiver!=null){try{unregisterReceiver(musicInfoReceiver);}catch(Exception ignored){}}
-        stop();stopAudio();super.onDestroy();
+        resumeHandler.removeCallbacks(resumeTick);stop();releaseLocalPlayer();super.onDestroy();
     }
     void showMediaDiagnostics(){
         String selected=getPreferences(MODE_PRIVATE).getString("musicPackage","Not selected");
@@ -129,7 +132,7 @@ public class MainActivity extends Activity {
             (trackTitle.length()>0?trackTitle+" / "+trackArtist:"No compatible metadata broadcast detected")+
             "\nSource: "+(metadataSource.length()>0?metadataSource:"none")+
             "\n\nThe factory player may keep metadata private. This is a read-only test.";
-        new AlertDialog.Builder(this).setTitle("Media diagnostics - V11").setMessage(msg)
+        new AlertDialog.Builder(this).setTitle("Media diagnostics - V7").setMessage(msg)
             .setPositiveButton("OK",null).setNeutralButton("Choose player",new android.content.DialogInterface.OnClickListener(){
                 public void onClick(android.content.DialogInterface d,int w){chooseAnyMusicApp();}}).show();
     }
@@ -193,6 +196,7 @@ public class MainActivity extends Activity {
         sendOrderedBroadcast(intent,null);
     }
     void openRadio(){
+        saveUsbPlaybackState();getPreferences(MODE_PRIVATE).edit().putString("last_audio_source","fm").apply();
         stopAudio();
         try {
             Intent i=getPackageManager().getLaunchIntentForPackage("com.spd.radio");
@@ -207,26 +211,8 @@ public class MainActivity extends Activity {
         if(!hasAudioFocus)toast("Audio output busy — stop other source first");
         return hasAudioFocus;
     }
-    void saveUsbPlaybackState(){
-        try{if(usbMode&&localPlayer!=null&&usbIndex>=0&&usbIndex<usbTracks.size()){
-            getPreferences(MODE_PRIVATE).edit()
-                .putString("resume_usb_path",usbTracks.get(usbIndex).getAbsolutePath())
-                .putInt("resume_usb_position",Math.max(0,localPlayer.getCurrentPosition()))
-                .putBoolean("resume_usb_playing",localPlayer.isPlaying()).apply();
-        }}catch(Exception ignored){}
-    }
-    void restoreUsbPlaybackState(){
-        String path=getPreferences(MODE_PRIVATE).getString("resume_usb_path","");
-        if(path.length()==0||usbTracks.isEmpty()||!getPreferences(MODE_PRIVATE).getBoolean("resume_usb_playing",false))return;
-        for(int i=0;i<usbTracks.size();i++)if(path.equals(usbTracks.get(i).getAbsolutePath())){
-            int savedPosition=Math.max(0,getPreferences(MODE_PRIVATE).getInt("resume_usb_position",0));
-            playUsb(i);
-            if(localPlayer!=null)try{localPlayer.seekTo(savedPosition);}catch(Exception ignored){}
-            return;
-        }
-    }
     void pauseAudio(){try{if(localPlayer!=null&&localPlayer.isPlaying())localPlayer.pause();}catch(Exception ignored){}if(dashboard!=null)dashboard.invalidate();}
-    void stopAudio(){getPreferences(MODE_PRIVATE).edit().putBoolean("resume_usb_playing",false).apply();releaseLocalPlayer();usbMode=false;localMode=false;trackTitle="";trackArtist="";if(audioManager!=null&&hasAudioFocus){audioManager.abandonAudioFocus(focusListener);hasAudioFocus=false;}if(dashboard!=null)dashboard.invalidate();}
+    void stopAudio(){saveUsbPlaybackState();releaseLocalPlayer();usbMode=false;localMode=false;trackTitle="";trackArtist="";if(audioManager!=null&&hasAudioFocus){audioManager.abandonAudioFocus(focusListener);hasAudioFocus=false;}if(dashboard!=null)dashboard.invalidate();}
     void releaseLocalPlayer(){
         try{if(localPlayer!=null){localPlayer.reset();localPlayer.release();}}catch(Throwable ignored){}
         localPlayer=null;albumArt=null;
@@ -240,24 +226,65 @@ public class MainActivity extends Activity {
     }
     void playUsb(int index){
         if(index<0||index>=usbTracks.size())return;
+        saveUsbPlaybackState();
         releaseLocalPlayer();
         if(!requestMusicFocus())return;
         try{File f=usbTracks.get(index);albumArt=null;localPlayer=new MediaPlayer();localPlayer.setDataSource(f.getAbsolutePath());
             localPlayer.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);localPlayer.prepare();localPlayer.start();
-            usbIndex=index;usbMode=true;localMode=false;trackTitle=f.getName();trackArtist="USB / "+f.getParentFile().getName();metadataSource="Zoma USB player";
+            usbIndex=index;usbMode=true;localMode=false;
+            getPreferences(MODE_PRIVATE).edit().putString("last_audio_source","usb").putString("usb_last_file",f.getAbsolutePath()).putInt("usb_last_position",0).putBoolean("usb_was_playing",true).apply();
+            trackTitle=f.getName();trackArtist="USB / "+f.getParentFile().getName();metadataSource="Zoma USB player";
             try{MediaMetadataRetriever m=new MediaMetadataRetriever();m.setDataSource(f.getAbsolutePath());String t=m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);String a=m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);if(t!=null&&t.length()>0)trackTitle=t;if(a!=null&&a.length()>0)trackArtist=a;byte[] art=m.getEmbeddedPicture();if(art!=null)albumArt=BitmapFactory.decodeByteArray(art,0,art.length);m.release();}catch(Exception ignored){}
-            localPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){public void onCompletion(MediaPlayer m){nextUsb(1);}});saveUsbPlaybackState();dashboard.invalidate();
+            localPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){public void onCompletion(MediaPlayer m){nextUsb(1);}});dashboard.invalidate();
         }catch(Throwable e){releaseLocalPlayer();toast("Cannot play this USB audio file");}
     }
     void nextUsb(int direction){if(usbTracks.size()>0)playUsb((usbIndex+direction+usbTracks.size())%usbTracks.size());}
-    void togglePlayback(){if(localPlayer==null){openRememberedUsb();return;}try{if(localPlayer.isPlaying())localPlayer.pause();else if(requestMusicFocus())localPlayer.start();saveUsbPlaybackState();dashboard.invalidate();}catch(Exception e){toast("Player error");}}
+    void togglePlayback(){if(localPlayer==null){openRememberedUsb();return;}try{
+        if(localPlayer.isPlaying()){saveUsbPlaybackState();localPlayer.pause();if(usbMode)getPreferences(MODE_PRIVATE).edit().putBoolean("usb_was_playing",false).apply();}
+        else if(requestMusicFocus()){localPlayer.start();if(usbMode)getPreferences(MODE_PRIVATE).edit().putBoolean("usb_was_playing",true).apply();}
+        dashboard.invalidate();}catch(Exception e){toast("Player error");}}
     void showUsbTracks(){
         if(usbTracks.isEmpty()){toast("No supported audio found. Choose a different folder.");return;}
         final String[] labels=new String[usbTracks.size()];for(int i=0;i<labels.length;i++)labels[i]=usbTracks.get(i).getName();
         new AlertDialog.Builder(this).setTitle("USB MUSIC  •  "+labels.length+" files").setItems(labels,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int i){playUsb(i);}})
             .setNeutralButton("Choose folder",new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int w){chooseUsbRoot();}}).setNegativeButton("Close",null).show();
     }
-    // Remember the chosen music directory across launcher restarts. Never auto-play on boot.
+    // Persist position periodically, and immediately on pause/source switch.
+    void saveUsbPlaybackState(){
+        if(!usbMode||localPlayer==null||usbIndex<0||usbIndex>=usbTracks.size())return;
+        try{getPreferences(MODE_PRIVATE).edit()
+            .putString("usb_last_file",usbTracks.get(usbIndex).getAbsolutePath())
+            .putInt("usb_last_position",Math.max(0,localPlayer.getCurrentPosition()))
+            .putBoolean("usb_was_playing",localPlayer.isPlaying()).apply();}
+        catch(Exception ignored){}
+    }
+    // One startup attempt, delayed to allow USB storage to mount. Never override last FM source.
+    void resumeLastUsbOnce(){
+        if(resumeAttempted)return;
+        resumeAttempted=true;
+        final android.content.SharedPreferences pref=getPreferences(MODE_PRIVATE);
+        if(!"usb".equals(pref.getString("last_audio_source",""))||!pref.getBoolean("usb_was_playing",false))return;
+        final String path=pref.getString("usb_last_file","");
+        if(path.length()==0)return;
+        final int position=Math.max(0,pref.getInt("usb_last_position",0));
+        resumeHandler.postDelayed(new Runnable(){int attempts=0;public void run(){
+            // User selected another source while waiting: do not steal audio focus.
+            if(!"usb".equals(pref.getString("last_audio_source","")))return;
+            File f=new File(path);
+            if(!f.isFile()||!f.canRead()){
+                if(++attempts<6)resumeHandler.postDelayed(this,2000);
+                return;
+            }
+            File parent=f.getParentFile();if(parent==null)return;
+            rememberUsbFolder(parent);
+            usbTracks.clear();collectMusic(parent,0,2000);
+            int index=usbTracks.indexOf(f);
+            if(index<0)return;
+            playUsb(index);
+            if(localPlayer!=null){try{localPlayer.seekTo(Math.min(position,Math.max(0,localPlayer.getDuration()-1000)));}catch(Exception ignored){}}
+        }},2500);
+    }
+    // Remember the chosen music directory across launcher restarts.
     void rememberUsbFolder(File folder){
         if(folder!=null&&folder.isDirectory())getPreferences(MODE_PRIVATE).edit().putString("usb_folder",folder.getAbsolutePath()).apply();
     }
@@ -354,7 +381,7 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||keyCode==KeyEvent.KEYCODE_HEADSETHOOK){if(localPlayer!=null){togglePlayback();return true;}}
         return super.onKeyDown(keyCode,event);
     }
-    void chooseAppearance(){final String[] choices={"NEXUS Night • Cinematic", "NEXUS Daylight • Independent cockpit"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
+    void chooseAppearance(){final String[] choices={"Electric Blue", "Pearl Titanium", "Royal Blue Twilight"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
@@ -512,146 +539,128 @@ public class MainActivity extends Activity {
             }catch(Exception ignored){}}
             centerText(label,cx,y,12,Color.WHITE,true);
         }
-
-        // V11: Both themes are drawn from the same geometry. No baked UI screenshot.
-        // Interactive regions deliberately match the existing V9 onTouchEvent coordinates.
-        void drawV11(){
-            // V11 review: all visible controls are drawn dynamically.
-            boolean day=appearance==1;
-            int ink=day?col("#18344B"):Color.WHITE;
-            int muted=day?col("#526D7E"):col("#B9D7EA");
-            int cyan=day?col("#087D99"):col("#65E1F3");
-            int panel=day?Color.argb(238,245,250,252):Color.argb(218,15,49,83);
-            int sub=day?col("#DFEDF2"):col("#204B73");
-            gradient(0,0,800,480,day?col("#E4F1F5"):col("#153D69"),
-                    day?col("#B9D8E4"):col("#376E9A"));
-            // Only photographic assets are allowed in the scene; clocks and labels are live.
-            Bitmap hero=day?daySuv:nexusRoad;
-            if(hero!=null){
-                fill(Color.WHITE);
-                c.drawBitmap(hero,null,new RectF(365,65,799,345),p);
-                fill(day?Color.argb(32,233,247,253):Color.argb(30,8,34,66));
-                c.drawRect(365,65,799,345,p);
-            }
-            box(0,0,98,480,day?col("#D6E8EE"):col("#102E52"));
-            box(101,0,799,64,day?Color.argb(238,242,250,252):Color.argb(216,12,43,77));
-            text("ZomaOS  NEXUS V11",116,28,22,ink,true);
-            text(day?"PEARL TITANIUM":"ROYAL BLUE TWILIGHT",117,48,11,cyan,true);
+        void drawDaylight(){
+            // Independent daytime composition: ivory, slate, teal and real SUV photography.
+            gradient(0,0,800,480,col("#17354C"),col("#416B80"));
+            if(daySuv!=null){fill(Color.WHITE);c.drawBitmap(daySuv,null,new RectF(360,76,799,346),p);}
+            box(0,0,98,480,col("#173A45"));
+            box(100,0,800,68,col("#183A51"));
+            text("ZOMAOS  /  NEXUS V9",119,31,23,Color.WHITE,true);
+            text("DAYLIGHT COCKPIT",120,52,12,col("#58D9E8"),true);
             String[] nav={"HOME","MUSIC","RADIO","AUTO","OBD","APPS","SET"};
             for(int i=0;i<nav.length;i++){
-                int y=102+i*43;
-                if(i==0)box(5,75,93,119,day?col("#A6D9E2"):col("#237CA9"));
-                text(nav[i],13,y,13,i==0?cyan:ink,true);
+                if(i==0)box(5,75,93,122,col("#087F89"));
+                text(nav[i],14,108+i*43,12,Color.WHITE,true);
             }
-            // Live time/date; no duplicate static clock or text in the background.
-            box(105,73,376,165,panel);
-            text(clockText(),120,121,44,ink,true);
-            text(new SimpleDateFormat("EEE, dd MMM yyyy",Locale.ENGLISH).format(new Date()),
-                    121,145,13,muted,false);
-            // Media controls occupy the original V9 touch coordinates.
-            box(103,190,468,340,panel);
-            text("NOW PLAYING",120,211,12,cyan,true);
-            String title=usbMode||localMode?trackTitle:"Choose music source";
-            if(title.length()>34)title=title.substring(0,33)+"...";
-            text(title,albumArt==null?120:172,238,17,ink,true);
-            String artist=usbMode||localMode?trackArtist:"USB music / Geely player";
-            if(artist.length()>41)artist=artist.substring(0,40)+"...";
-            text(artist,albumArt==null?120:172,257,12,muted,false);
-            if(albumArt!=null){fill(Color.WHITE);c.drawBitmap(albumArt,null,new RectF(120,219,165,266),p);}
-            text(usbMode?"USB MUSIC":localMode?"LOCAL MUSIC":"NO PLAYER DATA",120,276,11,cyan,true);
-            box(120,282,449,286,sub);
-            if(localPlayer!=null){try{
-                int dur=localPlayer.getDuration(),pos=localPlayer.getCurrentPosition();
-                if(dur>0){box(120,282,120+329f*Math.max(0,pos)/dur,286,cyan);}
-            }catch(Exception ignored){}}
-            centerText("|<",190,324,22,ink,true);
-            centerText(localPlayer!=null&&localPlayer.isPlaying()?"II":">",296,324,22,cyan,true);
-            centerText(">|",402,324,22,ink,true);
-            // No fabricated FM/Bluetooth activity: only a launcher entry until integration.
-            box(475,193,625,303,panel);
-            text("MEDIA SOURCE",488,216,12,cyan,true);
-            text(localPlayer!=null&&usbMode?"USB PLAYER":localPlayer!=null&&localMode?"LOCAL PLAYER":"UNKNOWN",488,244,13,ink,true);
-            text("TAP: USB FILES",488,272,11,muted,true);
-            if(showAnalog){
-                float cx=709,cy=266,r=65;
-                fill(day?col("#E8F5F8"):col("#103B66"));c.drawCircle(cx,cy,r+5,p);
-                fill(day?col("#FFFFFF"):col("#173D62"));c.drawCircle(cx,cy,r,p);
-                for(int i=0;i<60;i++){
-                    double a=i*Math.PI/30-Math.PI/2;
-                    float inner=i%5==0?r-19:r-12,outer=r-7;
-                    line(cx+(float)Math.cos(a)*inner,cy+(float)Math.sin(a)*inner,
-                            cx+(float)Math.cos(a)*outer,cy+(float)Math.sin(a)*outer,
-                            i%5==0?cyan:muted,i%5==0?2:1);
-                }
-                Calendar t=Calendar.getInstance();
-                float ss=t.get(Calendar.SECOND),mm=t.get(Calendar.MINUTE)+ss/60f,
-                        hh=t.get(Calendar.HOUR)+mm/60f;
-                hand(cx,cy,(float)(hh*Math.PI/6-Math.PI/2),30,5,ink);
-                hand(cx,cy,(float)(mm*Math.PI/30-Math.PI/2),44,3,cyan);
-                hand(cx,cy,(float)(ss*Math.PI/30-Math.PI/2),48,1,col("#F59B66"));
-                fill(cyan);c.drawCircle(cx,cy,4,p);
-            }
-            String[] labels={"USB FILES","FM RADIO","ANDROID AUTO","OBD","APPS"};
+            box(105,74,377,165,col("#244A60"));
+            box(103,192,468,338,col("#18384D"));
+            box(474,195,624,300,col("#18384D"));
+            box(631,192,791,341,col("#1B3B50"));
+            box(98,347,800,410,col("#17394C"));
+            String[] actions={"USB FILES","FM RADIO","ANDROID AUTO","OBD","APPS"};
+            int[] edges={103,239,372,509,640,793};
             for(int i=0;i<5;i++){
-                float l=dockEdges[i]+2,r=dockEdges[i+1]-7,cx=(l+r)/2;
-                box(l,349,r,403,panel);
+                box(edges[i],353,edges[i+1]-6,401,col("#29536A"));
+                drawDockLabel(i,(edges[i]+edges[i+1]-6)/2,382);
+            }
+        }
+        // V11: artwork is ONLY the vehicle photograph. Every control and clock is live Canvas UI.
+        void glass(float l,float t,float r,float b,boolean day){
+            box(l+1,t+3,r+1,b+4,day?Color.argb(35,17,58,84):Color.argb(70,0,7,21));
+            box(l,t,r,b,day?Color.argb(231,246,251,254):Color.argb(229,13,56,100));
+            line(l+11,t+1,r-11,t+1,day?col("#FFFFFF"):col("#50DDF8"),1.5f);
+        }
+        // V11 premium composition: full-bleed photo + independent live controls.
+        // Hit regions match onTouchEvent; no text or controls are baked into artwork.
+        // Exact-reference cockpit: the visual chrome comes from the approved 800x480 artwork.
+        // Dynamic text and clock hands are always rendered live. Hit regions below are real.
+        void drawV11(){
+            boolean pearl=appearance==1;
+            Bitmap scene=appearance==1?exactPearl:(appearance==2?exactTwilight:exactElectric);
+            if(scene!=null){fill(Color.WHITE);c.drawBitmap(scene,null,new RectF(0,0,800,480),p);}
+            int ink=pearl?col("#123B66"):Color.WHITE;
+            int accent=pearl?col("#007FAD"):col("#73F4FF");
+            text(clockText(),126,137,51,ink,true);
+            text(clockText(),706,36,27,ink,true);
+            String song=(usbMode||localMode)?trackTitle:"Choose your music";
+            if(song==null||song.length()==0)song="Choose your music";
+            if(song.length()>22)song=song.substring(0,21)+"…";
+            text(song,193,259,14,ink,true);
+            String singer=(usbMode||localMode)?trackArtist:"USB / Geely music";
+            if(singer==null)singer="";
+            if(singer.length()>31)singer=singer.substring(0,30)+"…";
+            text(singer,193,278,10,ink,false);
+            // Radio and Bluetooth state cannot be verified through the factory MCU here.
+            // Never show the reference image's illustrative 90.90 MHz as a real frequency.
+            text("FM / BT",485,306,19,accent,true);
+            if(showAnalog){
+                Calendar t=Calendar.getInstance();
+                float ss=t.get(Calendar.SECOND),mm=t.get(Calendar.MINUTE)+ss/60f,hh=t.get(Calendar.HOUR)+mm/60f;
+                float cx=703,cy=289;
+                hand(cx,cy,(float)(hh*Math.PI/6-Math.PI/2),29,5,ink);
+                hand(cx,cy,(float)(mm*Math.PI/30-Math.PI/2),45,3,ink);
+                hand(cx,cy,(float)(ss*Math.PI/30-Math.PI/2),53,1,accent);
+                fill(accent);c.drawCircle(cx,cy,4,p);
+            }
+            // User-customized dock labels overlay the decorative default shortcuts.
+            for(int i=0;i<4;i++){
                 String pkg=getPreferences(MODE_PRIVATE).getString("dock_pkg_"+i,"");
                 if(pkg.length()>0){
-                    try{
-                        android.graphics.drawable.Drawable d=getPackageManager().getApplicationIcon(pkg);
-                        d.setBounds((int)cx-12,352,(int)cx+12,376);d.draw(c);
-                    }catch(Exception ignored){}
-                    String name=dockLabel(i);if(name.length()>14)name=name.substring(0,13)+"…";
-                    centerText(name,cx,393,10,ink,true);
-                }else centerText(labels[i],cx,381,11,ink,true);
-            }
-            box(0,417,800,480,day?col("#D6E8EE"):col("#102E52"));
-            line(0,417,800,417,cyan,1);
-            centerText("ZOMAOS NEXUS V11  •  DRIVE SAFE",400,444,12,ink,true);
-            centerText("MEDIA: "+(localPlayer!=null&&usbMode?"USB":localPlayer!=null&&localMode?"LOCAL":"UNKNOWN")+
-                    "    |    OBD: "+status,400,463,10,muted,false);
-            int odo=getPreferences(MODE_PRIVATE).getInt("odo",-1);
-            int last=getPreferences(MODE_PRIVATE).getInt("oil_last",-1);
-            int interval=getPreferences(MODE_PRIVATE).getInt("oil_interval",7000);
-            if(getPreferences(MODE_PRIVATE).getBoolean("oil_visible",true)&&
-                    odo>=0&&last>=0&&odo>=last+interval-500){
-                box(498,325,790,344,col("#995324"));
-                centerText(odo>=last+interval?"OIL DUE":
-                        "OIL IN "+Math.max(0,last+interval-odo)+" KM",643,339,12,Color.WHITE,true);
+                    float x=180+i*146;
+                    fill(pearl?col("#E8F6FE"):col("#073A72"));
+                    c.drawRoundRect(new RectF(x-62,382,x+62,419),9,9,p);
+                    String label=dockLabel(i);
+                    if(label.length()>13)label=label.substring(0,12)+"…";
+                    centerText(label,x,405,12,ink,true);
+                }
             }
         }
         @Override protected void onDraw(Canvas canvas){
             c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);
-            drawV11();
-            c.restore();
-            postInvalidateDelayed(1000);
+            drawV11();c.restore();postInvalidateDelayed(1000);
         }
         @Override public boolean onTouchEvent(MotionEvent e){
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();
-            if(e.getAction()==MotionEvent.ACTION_DOWN&&y>=349&&y<=409&&x>=100){
-                pressedDock=dockIndex(x);dockLongPressed=false;
-                final int chosen=pressedDock;
-                pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==chosen&&chosen>=0){dockLongPressed=true;editDock(chosen);}}};
-                dockHandler.postDelayed(pendingDockLongPress,650);return true;
-            }
-            if(e.getAction()==MotionEvent.ACTION_CANCEL){if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);pressedDock=-1;return true;}
-            if(e.getAction()==MotionEvent.ACTION_MOVE&&pressedDock>=0){
-                if(y<337||y>417||dockIndex(x)!=pressedDock){if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);pressedDock=-1;}
+            int a=e.getAction();
+            if(a==MotionEvent.ACTION_DOWN){
+                if(y>=353&&y<=420&&x>=dockEdges[0]&&x<dockEdges[5]){
+                    pressedDock=dockIndex(x);
+                    dockLongPressed=false;
+                    final int idx=pressedDock;
+                    pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
+                    dockHandler.postDelayed(pendingDockLongPress,650);
+                    return true;
+                }
+                if(y>=312&&y<=337&&x>=190&&x<=366){draggingSeek=true;return true;}
                 return true;
             }
-            if((e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE)&&y>=277&&y<=294&&x>=120&&x<=449){draggingSeek=true;return true;}
-            if(e.getAction()!=MotionEvent.ACTION_UP)return true;
+            if(a==MotionEvent.ACTION_CANCEL){
+                if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
+                pressedDock=-1;draggingSeek=false;return true;
+            }
+            if(a!=MotionEvent.ACTION_UP)return true;
             if(pendingDockLongPress!=null){dockHandler.removeCallbacks(pendingDockLongPress);pendingDockLongPress=null;}
-            if(pressedDock>=0){int index=pressedDock;pressedDock=-1;if(!dockLongPressed&&dockIndex(x)==index)activateDock(index);return true;}
-            if(draggingSeek){draggingSeek=false;seekMusic(x);return true;}
-            if(y>=325&&y<=344&&x>=498){oilReminderActions();return true;}
-            if(y>=349&&y<=409&&x>=100){int index=dockIndex(x);if(index>=0)activateDock(index);return true;}
-            if(y>=290&&y<340&&x>=135&&x<465){if(x<242){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}else if(x<350)togglePlayback();else{if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}return true;}
-            if(x>=475&&x<=625&&y>=195&&y<=310){openRememberedUsb();return true;}
-            if(y>=418&&x>500){showZomaSettings();return true;}
-            if(x<94){int nav=(int)((y-75)/43f);if(y<75||nav==0)return true;if(nav==1){musicHub();return true;}if(nav==2){openRadio();return true;}if(nav==3){launch(new String[]{"me.ri3d.openauto"},"");return true;}if(nav==4){showMode();return true;}if(nav==5){showAppCenter();return true;}showZomaSettings();return true;}
-            if(y>=190&&y<=290&&x>=100&&x<=465){if(usbMode)showUsbTracks();else openRememberedUsb();return true;}
-            if(y<70&&x>630){showZomaSettings();return true;}
+            if(pressedDock>=0){int i=pressedDock;pressedDock=-1;
+                if(!dockLongPressed)activateDock(i);return true;}
+            if(draggingSeek){draggingSeek=false;seekMusic(121f+(x-190f)*324f/176f);return true;}
+            if(x<90){
+                if(y<120)return true;
+                if(y<180){musicHub();return true;}
+                if(y<231){openRadio();return true;}
+                if(y<287){activateDock(2);return true;}
+                if(y<337){showMode();return true;}
+                if(y<388){showAppCenter();return true;}
+                showZomaSettings();return true;
+            }
+            if(y>=337&&y<379&&x>=155&&x<=405){
+                if(x<236){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}
+                else if(x<313)togglePlayback();
+                else {if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}
+                return true;
+            }
+            if(y>=233&&y<367&&x>=429&&x<=613){openRadio();return true;}
+            if(y>=230&&y<310&&x>=105&&x<=423){if(usbMode)showUsbTracks();else openRememberedUsb();return true;}
+            if(y<55&&x<380){showZomaSettings();return true;}
             return true;
         }
 

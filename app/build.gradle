@@ -6,7 +6,7 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 18
-        versionName '11.0-layout-prototype'
+        versionCode 23
+        versionName '11.3-exact-reference-prototype'
     }
 }

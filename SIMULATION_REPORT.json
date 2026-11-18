@@ -1,0 +1,59 @@
+{
+  "kind": "static geometry simulation, NOT Android emulator",
+  "size": [
+    800,
+    480
+  ],
+  "tests": [
+    {
+      "name": "dock 1",
+      "pass": true
+    },
+    {
+      "name": "dock 2",
+      "pass": true
+    },
+    {
+      "name": "dock 3",
+      "pass": true
+    },
+    {
+      "name": "dock 4",
+      "pass": true
+    },
+    {
+      "name": "dock 5",
+      "pass": true
+    },
+    {
+      "name": "seek",
+      "pass": true
+    },
+    {
+      "name": "previous",
+      "pass": true
+    },
+    {
+      "name": "play",
+      "pass": true
+    },
+    {
+      "name": "next",
+      "pass": true
+    },
+    {
+      "name": "radio",
+      "pass": true
+    }
+  ],
+  "passed": 10,
+  "total": 10,
+  "not_tested": [
+    "actual APK build",
+    "Android 4.1 runtime",
+    "FM/BT playback detection",
+    "USB resume after cold boot",
+    "render pixel fidelity",
+    "touch integration with Android event dispatch"
+  ]
+}

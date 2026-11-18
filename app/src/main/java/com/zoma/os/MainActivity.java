@@ -195,15 +195,23 @@ public class MainActivity extends Activity {
         intent.putExtra(Intent.EXTRA_KEY_EVENT,new KeyEvent(when,when,action,key,0));
         sendOrderedBroadcast(intent,null);
     }
+    // V12: Factory tuner stays authoritative. No guessed frequency or unsupported MCU commands.
     void openRadio(){
-        saveUsbPlaybackState();getPreferences(MODE_PRIVATE).edit().putString("last_audio_source","fm").apply();
-        stopAudio();
         try {
             Intent i=getPackageManager().getLaunchIntentForPackage("com.spd.radio");
-            if(i!=null){startActivity(i);return;}
-            i=new Intent();i.setClassName("com.spd.radio","com.spd.radio.MainActivity");startActivity(i);
-        } catch(Throwable e){toast("Factory FM Radio unavailable - check installed Radio app");}
+            if(i==null){i=new Intent();i.setClassName("com.spd.radio","com.spd.radio.MainActivity");}
+            // Only change audio source after a launch request succeeds.
+            startActivity(i);
+            saveUsbPlaybackState();
+            getPreferences(MODE_PRIVATE).edit().putString("last_audio_source","fm").apply();
+            stopAudio();
+        } catch(Throwable e){
+            android.util.Log.e("ZomaOS","Factory radio launch failed",e);
+            toast("Factory FM Radio unavailable - check installed Radio app");
+        }
     }
+    // The stock radio's frequency and preset commands are not exposed by this source.
+    // Avoid fake station display or broadcasting undocumented hardware commands.
     boolean requestMusicFocus(){
         if(audioManager==null)return true;
         int result=audioManager.requestAudioFocus(focusListener,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);
@@ -238,7 +246,13 @@ public class MainActivity extends Activity {
             localPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){public void onCompletion(MediaPlayer m){nextUsb(1);}});dashboard.invalidate();
         }catch(Throwable e){releaseLocalPlayer();toast("Cannot play this USB audio file");}
     }
-    void nextUsb(int direction){if(usbTracks.size()>0)playUsb((usbIndex+direction+usbTracks.size())%usbTracks.size());}
+    void nextUsb(int direction){
+        if(usbTracks.isEmpty())return;
+        // Dedicated track navigation: never alter the playback position within the same track.
+        int base=usbIndex<0?(direction>0?-1:0):usbIndex;
+        int target=(base+(direction>0?1:-1)+usbTracks.size())%usbTracks.size();
+        playUsb(target);
+    }
     void togglePlayback(){if(localPlayer==null){openRememberedUsb();return;}try{
         if(localPlayer.isPlaying()){saveUsbPlaybackState();localPlayer.pause();if(usbMode)getPreferences(MODE_PRIVATE).edit().putBoolean("usb_was_playing",false).apply();}
         else if(requestMusicFocus()){localPlayer.start();if(usbMode)getPreferences(MODE_PRIVATE).edit().putBoolean("usb_was_playing",true).apply();}

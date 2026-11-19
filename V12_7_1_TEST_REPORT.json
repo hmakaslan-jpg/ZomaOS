@@ -1,0 +1,10 @@
+{
+  "source_exists": true,
+  "version_name_correct": true,
+  "four_backgrounds": true,
+  "seek_same_constants": true,
+  "no_concept_background_in_drawApproved": true,
+  "workflow_updated": true,
+  "android_build": "NOT RUN - Android SDK and Gradle unavailable",
+  "hardware_test": "NOT RUN"
+}

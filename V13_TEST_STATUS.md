@@ -1,0 +1,1 @@
+Source integrity and panel asset checked. Design preview is a Python composition using the same glass panel asset and source widget coordinates, NOT an Android screenshot. APK build, emulator, hardware USB Resume tests NOT RUN.

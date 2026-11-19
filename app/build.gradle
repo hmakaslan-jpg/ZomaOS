@@ -6,7 +6,7 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 29
-        versionName '12.5-approved-concept'
+        versionCode 41
+        versionName '14.1-visual-assets-beta'
     }
 }

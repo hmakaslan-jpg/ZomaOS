@@ -356,7 +356,21 @@ public class MainActivity extends Activity {
         int target=(base+(direction>0?1:-1)+usbTracks.size())%usbTracks.size();
         playUsb(target);
     }
-    void togglePlayback(){if(localPlayer==null){openRememberedUsb();return;}try{
+    void resumeLastUsb(){
+        try{
+            String last=getPreferences(MODE_PRIVATE).getString("usb_last_file","");
+            if(last.length()==0){openRememberedUsb();return;}
+            File track=new File(last);
+            if(!track.isFile()||!track.canRead()){toast("USB unavailable - choose folder");openRememberedUsb();return;}
+            if(usbTracks.isEmpty())restoreUsbFolder();
+            int found=-1;for(int i=0;i<usbTracks.size();i++)if(last.equals(usbTracks.get(i).getAbsolutePath())){found=i;break;}
+            if(found<0){usbTracks.add(track);found=usbTracks.size()-1;}
+            int position=getPreferences(MODE_PRIVATE).getInt("usb_last_position",0);
+            playUsb(found);
+            if(localPlayer!=null&&position>0)localPlayer.seekTo(Math.min(position,Math.max(0,localPlayer.getDuration()-500)));
+        }catch(Throwable err){android.util.Log.e("ZomaOS","USB resume failed",err);toast("Unable to resume USB audio");}
+    }
+    void togglePlayback(){if(localPlayer==null){resumeLastUsb();return;}try{
         if(localPlayer.isPlaying()){saveUsbPlaybackState();localPlayer.pause();if(usbMode)getPreferences(MODE_PRIVATE).edit().putBoolean("usb_was_playing",false).apply();}
         else if(requestMusicFocus()){localPlayer.start();if(usbMode)getPreferences(MODE_PRIVATE).edit().putBoolean("usb_was_playing",true).apply();}
         dashboard.invalidate();}catch(Exception e){toast("Player error");}}
@@ -506,7 +520,7 @@ public class MainActivity extends Activity {
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
-        final String[] items={"Appearance • Night / Daylight", "Accent colors", "Clock • 12 / 24 hour", "Analog clock • Show / hide", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults", "Touch Test Mode (safe / no actions)"};
+        final String[] items={"Appearance • Night / Daylight", "Accent colors", "Clock • 12 / 24 hour", "Analog clock • Show / hide", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
         final Dialog dialog=new Dialog(this);dialog.setTitle("ZomaOS V15.3 • Settings");
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(16,10,16,10);panel.setBackgroundColor(Color.rgb(16,39,59));
         TextView heading=new TextView(this);heading.setText("ZOMAOS V15.3   /   SETTINGS");heading.setTextSize(22);heading.setTextColor(Color.WHITE);heading.setPadding(12,8,8,14);panel.addView(heading);
@@ -521,7 +535,7 @@ public class MainActivity extends Activity {
             case 7:maintenanceCenter();break;case 8:toggleOilReminder();break;
             case 9:maintenanceInput("Oil change interval (km)","oil_interval",getPreferences(MODE_PRIVATE).getInt("oil_interval",7000));break;
             case 10:showMode();break;case 11:launch(new String[]{},"settings");break;
-            case 13:touchTestMode=true;testCount=0;testX=-1;testY=-1;testLabel="Tap buttons to verify hit zones";dashboard.invalidate();break;
+
             case 12:new AlertDialog.Builder(MainActivity.this).setTitle("Restore defaults?").setPositiveButton("Reset",new DialogInterface.OnClickListener(){public void onClick(DialogInterface a,int b){getPreferences(MODE_PRIVATE).edit().clear().apply();theme=0;showAnalog=true;centerMode=0;appearance=0;clock12=false;dashboard.invalidate();}}).setNegativeButton("Cancel",null).show();break;
         }}});
         dialog.setContentView(panel);dialog.show();if(dialog.getWindow()!=null)dialog.getWindow().setLayout(-1,-1);
@@ -568,7 +582,7 @@ public class MainActivity extends Activity {
             int duration=localPlayer.getDuration();
             if(duration>0){
                 float seekLeft=appearance==1?203f:186f;
-                float seekRight=appearance==1?483f:498f;
+                float seekRight=appearance==1?510f:518f;
                 float fraction=Math.max(0f,Math.min(1f,(x-seekLeft)/(seekRight-seekLeft)));
                 localPlayer.seekTo((int)(duration*fraction));
                 dashboard.invalidate();
@@ -577,7 +591,7 @@ public class MainActivity extends Activity {
     }
     void openMaps(){launch(new String[]{"com.google.android.apps.maps","com.sygic.aura","com.mapswithme.maps.pro"},"");}
     void showMode(){final String[] modes={"DEMO (clearly simulated)","Bluetooth ELM327 (paired)","Phone bridge over Wi-Fi", "Disconnect / live blank", "Reset trip"};new AlertDialog.Builder(this).setTitle("ZomaOS Telemetry Source").setItems(modes,new android.content.DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int which){if(which==0)demo();if(which==1)chooseBluetooth();if(which==2)bridgeDialog();if(which==3){stop();simulated=false;resetReadings();setStatus("DISCONNECTED");}if(which==4){tripKm=0;dashboard.invalidate();}}}).show();}
-    void demo(){stop();resetReadings();simulated=true;setStatus("DEMO / NOT REAL DATA");new Thread(new Runnable(){public void run(){int i=0;while(simulated){int s=(int)(35+25*Math.sin(i/7.0));setSample(s,800+s*35,85+(i%7),25+(i%35),60);i++;try{Thread.sleep(900);}catch(Exception e){break;}}}}).start();}
+    void demo(){stop();resetReadings();simulated=true;carbonClock=false;dashboard.invalidate();toast("DEMO: simulated speed shown in clock dial");setStatus("DEMO / NOT REAL DATA");new Thread(new Runnable(){public void run(){int i=0;while(simulated){int s=(int)(35+25*Math.sin(i/7.0));setSample(s,800+s*35,85+(i%7),25+(i%35),60);i++;try{Thread.sleep(900);}catch(Exception e){break;}}}}).start();}
     void chooseBluetooth(){BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();if(adapter==null){toast("Android Bluetooth API unavailable; try phone bridge");return;}if(!adapter.isEnabled()){toast("Enable Bluetooth in Android settings first");return;}Set<BluetoothDevice> devices=adapter.getBondedDevices();if(devices==null||devices.isEmpty()){toast("Pair ELM327 in Android Bluetooth settings first");return;}final ArrayList<BluetoothDevice> list=new ArrayList<BluetoothDevice>(devices);String[] labels=new String[list.size()];for(int i=0;i<list.size();i++){BluetoothDevice dev=list.get(i);labels[i]=dev.getName()+"  ("+dev.getAddress()+")";}new AlertDialog.Builder(this).setTitle("Select paired OBD adapter").setItems(labels,new android.content.DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int i){connectBluetooth(list.get(i));}}).show();}
     void connectBluetooth(final BluetoothDevice device){stop();simulated=false;resetReadings();running=true;setStatus("BT CONNECTING...");worker=new Thread(new Runnable(){public void run(){try{BluetoothAdapter.getDefaultAdapter().cancelDiscovery();btSocket=device.createRfcommSocketToServiceRecord(SPP);btSocket.connect();setStatus("BT ELM327 LIVE");pollElm(btSocket.getInputStream(),btSocket.getOutputStream());}catch(Exception e){if(running)setStatus("BT ERROR: "+e.getClass().getSimpleName());}finally{stop();}}});worker.start();}
     void bridgeDialog(){final EditText field=new EditText(this);field.setSingleLine(true);field.setText("10.126.178.235:8765");new AlertDialog.Builder(this).setTitle("Phone bridge IP:port").setMessage("Requires a phone bridge server. This V2 includes client only; do not confuse this with OpenAuto port 5277.").setView(field).setPositiveButton("Connect",new android.content.DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int w){connectBridge(field.getText().toString().trim());}}).setNegativeButton("Cancel",null).show();}
@@ -862,8 +876,8 @@ public class MainActivity extends Activity {
         void n14Image(Bitmap b,float l,float t,float r,float bottom){
             if(b==null)return;
             p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);p.setColor(Color.WHITE);
-            int cropX=4, cropTop=8;
-            Rect source=new Rect(cropX,cropTop,b.getWidth()-cropX,b.getHeight());
+            int cropX=appearance==1?13:4, cropTop=8;
+            Rect source=new Rect(cropX,cropTop,b.getWidth()-4,b.getHeight());
             c.drawBitmap(b,source,new RectF(l,t,r,bottom),p);
         }
         void n14ClockHands(float cx,float cy,int edge){
@@ -916,6 +930,18 @@ public class MainActivity extends Activity {
         // Theme art remains full resolution; only the media region is redrawn.
         // V15.5: geometry follows the 800x480 artwork, not the previous V15.3 mockup.
         // The master images already contain a clean numbered clock face.
+        void premiumHand(float cx,float cy,float angle,float length,float width,int color){
+            float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
+            android.graphics.Path shape=new android.graphics.Path();
+            shape.moveTo(cx-dx*9-dy*width*.42f,cy-dy*9+dx*width*.42f);
+            shape.lineTo(cx+dx*length-dy*.7f,cy+dy*length+dx*.7f);
+            shape.lineTo(cx-dx*9+dy*width*.42f,cy-dy*9-dx*width*.42f);
+            shape.close();
+            p.reset();p.setAntiAlias(true);p.setColor(Color.argb(125,0,0,0));
+            c.save();c.translate(1.4f,1.8f);c.drawPath(shape,p);c.restore();
+            p.setColor(color);c.drawPath(shape,p);
+            p.setColor(Color.argb(115,255,255,255));p.setStrokeWidth(.75f);p.setStyle(Paint.Style.STROKE);c.drawPath(shape,p);p.setStyle(Paint.Style.FILL);
+        }
         void drawMasterV15(){
             boolean day=appearance==1;
             int accent=appearance==2?col("#FF435A"):day?col("#1679C4"):col("#2BDBFF");
@@ -929,10 +955,12 @@ public class MainActivity extends Activity {
             if(carbonClock){
                 // Do NOT repaint the clock dial or its printed numerals.
                 int handColor=day?col("#E5F4FF"):Color.WHITE;
-                hand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),40,4,handColor);
-                hand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),59,3,handColor);
-                hand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),71,1,accent);
-                fill(handColor);c.drawCircle(cx,cy,4,p);
+                // Tapered premium hands with subtle drop shadow and metal hub.
+                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),42,7,handColor);
+                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),62,4,handColor);
+                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),71,1.5f,accent);
+                fill(col("#233748"));c.drawCircle(cx,cy,6,p);
+                fill(col("#EAF6FF"));c.drawCircle(cx,cy,3.5f,p);
             }else{
                 fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
                 centerText(speed>=0&&!simulated?String.valueOf(speed):"--",cx,cy+10,33,Color.WHITE,true);
@@ -942,9 +970,9 @@ public class MainActivity extends Activity {
             fill(day?Color.argb(135,245,250,255):Color.argb(130,4,13,24));
             c.drawRoundRect(new RectF(410,5,791,32),8,8,p);
             text("ZomaOS",422,24,13,accent,true);
-            text("Wi-Fi",542,23,11,muted,false);
-            text("BT",590,23,11,muted,false);
-            fitCenteredText(clockText(),728,24,16,117,fg,true);
+            text("Wi-Fi",542,23,12,muted,false);
+            text("BT",595,23,12,muted,false);
+            fitCenteredText(clockText(),728,25,18,117,fg,true);
             // Player fits WITHIN the artwork's horizontal media frame (y=300..368).
             // Do not cover its illuminated border, especially on Pearl Day.
             float pl=day?150:133,pr=day?744:753,pt=310,pb=358;
@@ -961,7 +989,7 @@ public class MainActivity extends Activity {
             String artist=(usbMode||localMode)?trackArtist:"USB MUSIC";
             if(title==null||title.length()==0)title="Choose USB music";
             if(artist==null)artist="";
-            float tx=artX+48, barRight=day?483:498;
+            float tx=artX+48, barRight=day?510:518;
             fill(fg);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));p.setTextSize(12);
             title=TextUtils.ellipsize(title,new android.text.TextPaint(p),barRight-tx,TextUtils.TruncateAt.END).toString();
             text(title,tx,326,12,fg,true);
@@ -981,6 +1009,8 @@ public class MainActivity extends Activity {
             centerText("|◀",548,340,21,fg,true);
             centerText(localPlayer!=null&&localPlayer.isPlaying()?"Ⅱ":"▶",622,340,24,accent,true);
             centerText("▶|",697,340,21,fg,true);
+            // Sixth action without altering the factory five-tile artwork.
+            centerText("APPS",715,458,11,day?col("#174C77"):accent,true);
         }
 
         void drawApproved(){drawMasterV15();}
@@ -988,7 +1018,7 @@ public class MainActivity extends Activity {
         String testRegion(float x,float y){
             if(x>=90&&x<797&&y>=357&&y<=465){int i=masterDockIndex(x);return "DOCK: "+(i>=0&&i<5?dockLabel(i):"Outside dock");}
             if(x<107&&y>=65&&y<354){if(y<125)return "LEFT: Home";if(y<183)return "LEFT: Navigation";if(y<240)return "LEFT: Music";if(y<298)return "LEFT: Phone";return "LEFT: Settings";}
-            if(y>=341&&y<=355&&x>=(appearance==1?203:186)&&x<=(appearance==1?483:498))return "MUSIC: Seek bar (USB)";
+            if(y>=341&&y<=355&&x>=(appearance==1?203:186)&&x<=(appearance==1?510:518))return "MUSIC: Seek bar (USB)";
             if(y>=310&&y<=359&&x>=515&&x<=738)return x<588?"MUSIC: Previous":x<665?"MUSIC: Play/Pause":"MUSIC: Next";
             if(y>=28&&y<=285&&x>=105&&x<=357)return "CLOCK / GAUGE";
             if(y>=310&&y<=359&&x>=130&&x<200)return "MUSIC: Track list";
@@ -1025,7 +1055,7 @@ public class MainActivity extends Activity {
                     pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
                     dockHandler.postDelayed(pendingDockLongPress,650);return true;
                 }
-                if(y>=341&&y<=355&&x>=(appearance==1?203:186)&&x<=(appearance==1?483:498)&&localPlayer!=null){draggingSeek=true;seekMusic(x);return true;}
+                if(y>=341&&y<=355&&x>=(appearance==1?203:186)&&x<=(appearance==1?510:518)&&localPlayer!=null){draggingSeek=true;seekMusic(x);return true;}
                 return true;
             }
             if(a==MotionEvent.ACTION_CANCEL){
@@ -1042,9 +1072,14 @@ public class MainActivity extends Activity {
             }
             if(a!=MotionEvent.ACTION_UP)return true;
             if(pendingDockLongPress!=null){dockHandler.removeCallbacks(pendingDockLongPress);pendingDockLongPress=null;}
-            if(pressedDock>=0){int i=pressedDock;pressedDock=-1;if(!dockLongPressed)activateDock(i);return true;}
+            if(pressedDock>=0){int i=pressedDock;pressedDock=-1;if(!dockLongPressed){if(i==4&&y>429)showAppCenter();else activateDock(i);}return true;}
             if(draggingSeek){draggingSeek=false;seekMusic(x);return true;}
-            // Header status symbols are display-only. Use the Settings icon for settings.
+            // Header quick links open the actual system controls (not decorative labels).
+            if(y>=0&&y<=40){
+                if(x>=525&&x<580){try{startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS));}catch(Throwable e){launch(new String[]{},"settings");}return true;}
+                if(x>=580&&x<640){try{startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS));}catch(Throwable e){launch(new String[]{},"settings");}return true;}
+            }
+            // A compact Apps hotspot occupies the lower portion of the folder tile.
             // Five visible left-side icons: Home, Navigation, Music, Phone, Settings.
             // Do not reuse the seven-item V14 hit grid on the V15 artwork.
             if(x<107&&y>=65&&y<354){

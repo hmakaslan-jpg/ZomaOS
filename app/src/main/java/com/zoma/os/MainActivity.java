@@ -1008,10 +1008,10 @@ public class MainActivity extends Activity {
             if(artist==null)artist="";
             // Ellipsize instead of shrinking a long filename into unreadable text.
             fill(fg);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));p.setTextSize(14);
-            title=TextUtils.ellipsize(title,p,day?225:294,TextUtils.TruncateAt.END).toString();
+            title=TextUtils.ellipsize(title,new android.text.TextPaint(p),day?225:294,TextUtils.TruncateAt.END).toString();
             text(title,day?255:220,day?298:287,14,fg,true);
             fill(muted);p.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));p.setTextSize(11);
-            artist=TextUtils.ellipsize(artist,p,day?225:294,TextUtils.TruncateAt.END).toString();
+            artist=TextUtils.ellipsize(artist,new android.text.TextPaint(p),day?225:294,TextUtils.TruncateAt.END).toString();
             text(artist,day?255:220,day?316:306,11,muted,false);
             // Actual MediaPlayer position, not a painted progress marker.
             float left=day?255:221,right=day?480:506,top=day?328:321;

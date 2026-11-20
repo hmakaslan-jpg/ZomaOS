@@ -51,8 +51,8 @@ public class MainActivity extends Activity {
     AudioManager audioManager; boolean hasAudioFocus=false; boolean clock12=false; int appearance=0;
     AudioManager.OnAudioFocusChangeListener focusListener=new AudioManager.OnAudioFocusChangeListener(){public void onAudioFocusChange(int change){if(change==AudioManager.AUDIOFOCUS_LOSS||change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT){pauseAudio();}}};
     // User-configurable dock. Empty preference means the original built-in action.
-    final String[] dockDefaults={"USB MUSIC","RADIO FM","ANDROID AUTO","OBD","FILE BROWSER"};
-    final int[] dockEdges={90,225,359,512,642,797};
+    final String[] dockDefaults={"USB MUSIC","RADIO FM","ANDROID AUTO","OBD","FILE BROWSER","APPS"};
+    final int[] dockEdges={112,225,337,449,561,673,785};
     boolean dockLongPressed=false;
     final Handler dockHandler=new Handler();
     Runnable pendingDockLongPress;
@@ -75,6 +75,7 @@ public class MainActivity extends Activity {
         else if(index==2)openAndroidAuto();
         else if(index==3)showMode();
         else if(index==4)openFileBrowser();
+        else if(index==5)showAppCenter();
     }
     // Single Android Auto entry point for dock and entertainment hub.
     void openAndroidAuto(){
@@ -876,7 +877,7 @@ public class MainActivity extends Activity {
         void n14Image(Bitmap b,float l,float t,float r,float bottom){
             if(b==null)return;
             p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);p.setColor(Color.WHITE);
-            int cropX=appearance==1?13:4, cropTop=8;
+            int cropX=appearance==1?25:4, cropTop=8;
             Rect source=new Rect(cropX,cropTop,b.getWidth()-4,b.getHeight());
             c.drawBitmap(b,source,new RectF(l,t,r,bottom),p);
         }
@@ -1009,14 +1010,30 @@ public class MainActivity extends Activity {
             centerText("|◀",548,340,21,fg,true);
             centerText(localPlayer!=null&&localPlayer.isPlaying()?"Ⅱ":"▶",622,340,24,accent,true);
             centerText("▶|",697,340,21,fg,true);
-            // Sixth action without altering the factory five-tile artwork.
-            centerText("APPS",715,458,11,day?col("#174C77"):accent,true);
+            drawSixTileDock(day,accent);
         }
 
+        // Six independent visible tiles, matching the exact touch grid below.
+        void drawSixTileDock(boolean day,int accent){
+            int base=day?col("#E3EDF5"):col("#0B1627");
+            int ink=day?col("#184767"):Color.WHITE;
+            // Opaque strip hides the five obsolete artwork tiles before painting six.
+            fill(base);c.drawRect(109,370,790,480,p);
+            for(int i=0;i<6;i++){
+                float left=114+i*112f,right=left+105f;
+                fill(day?col("#D4E5F1"):col("#15243A"));
+                c.drawRoundRect(new RectF(left,382,right,463),10,10,p);
+                p.setColor(accent);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.2f);
+                c.drawRoundRect(new RectF(left+2,384,right-2,461),9,9,p);
+                p.setStyle(Paint.Style.FILL);
+                liteIcon(i==4?7:i==5?5:i==2?3:i==3?4:i==1?2:2,(left+right)/2,415,ink);
+                centerText(i==0?"USB":i==1?"RADIO":i==2?"AUTO":i==3?"OBD":i==4?"FILES":"APPS",(left+right)/2,448,11,ink,true);
+            }
+        }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}
         String testRegion(float x,float y){
-            if(x>=90&&x<797&&y>=357&&y<=465){int i=masterDockIndex(x);return "DOCK: "+(i>=0&&i<5?dockLabel(i):"Outside dock");}
+            if(x>=112&&x<785&&y>=382&&y<=463){int i=masterDockIndex(x);return "DOCK: "+(i>=0&&i<6?dockLabel(i):"Outside dock");}
             if(x<107&&y>=65&&y<354){if(y<125)return "LEFT: Home";if(y<183)return "LEFT: Navigation";if(y<240)return "LEFT: Music";if(y<298)return "LEFT: Phone";return "LEFT: Settings";}
             if(y>=341&&y<=355&&x>=(appearance==1?203:186)&&x<=(appearance==1?510:518))return "MUSIC: Seek bar (USB)";
             if(y>=310&&y<=359&&x>=515&&x<=738)return x<588?"MUSIC: Previous":x<665?"MUSIC: Play/Pause":"MUSIC: Next";
@@ -1049,11 +1066,12 @@ public class MainActivity extends Activity {
                 return true;
             }
             if(a==MotionEvent.ACTION_DOWN){
-                if(y>=357&&y<=465&&x>=90&&x<797){
+                if(y>=382&&y<=463&&x>=112&&x<785){
                     pressedDock=masterDockIndex(x);dockLongPressed=false;
                     final int idx=pressedDock;
-                    pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
-                    dockHandler.postDelayed(pendingDockLongPress,650);return true;
+                    if(idx>=0&&idx<5){pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
+                        dockHandler.postDelayed(pendingDockLongPress,650);}
+                    return true;
                 }
                 if(y>=341&&y<=355&&x>=(appearance==1?203:186)&&x<=(appearance==1?510:518)&&localPlayer!=null){draggingSeek=true;seekMusic(x);return true;}
                 return true;
@@ -1064,7 +1082,7 @@ public class MainActivity extends Activity {
             }
             if(a==MotionEvent.ACTION_MOVE){
                 if(draggingSeek){seekMusic(x);return true;}
-                if(pressedDock>=0&&(y<357||y>465||masterDockIndex(x)!=pressedDock)){
+                if(pressedDock>=0&&(y<382||y>463||masterDockIndex(x)!=pressedDock)){
                     if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
                     pendingDockLongPress=null;pressedDock=-1;
                 }
@@ -1072,7 +1090,7 @@ public class MainActivity extends Activity {
             }
             if(a!=MotionEvent.ACTION_UP)return true;
             if(pendingDockLongPress!=null){dockHandler.removeCallbacks(pendingDockLongPress);pendingDockLongPress=null;}
-            if(pressedDock>=0){int i=pressedDock;pressedDock=-1;if(!dockLongPressed){if(i==4&&y>429)showAppCenter();else activateDock(i);}return true;}
+            if(pressedDock>=0){int i=pressedDock;pressedDock=-1;if(!dockLongPressed){activateDock(i);}return true;}
             if(draggingSeek){draggingSeek=false;seekMusic(x);return true;}
             // Header quick links open the actual system controls (not decorative labels).
             if(y>=0&&y<=40){

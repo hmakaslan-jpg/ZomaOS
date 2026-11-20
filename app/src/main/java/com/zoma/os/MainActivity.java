@@ -30,7 +30,9 @@ public class MainActivity extends Activity {
     BluetoothSocket btSocket;
     Socket tcpSocket;
     Dashboard dashboard;
-    Bitmap[] approvedThemes=new Bitmap[4]; Bitmap n14Scene,n14Header,n14Nav,n14Selected,n14Time,n14Music,n14Source,n14Dock,n14Clock; Bitmap[] cinematicThemes=new Bitmap[4]; Bitmap exactElectric; Bitmap exactPearl; Bitmap exactTwilight; Bitmap nexusRoad; Bitmap signatureClock; Bitmap signatureDigital; Bitmap daySuv; Bitmap v11Night; Bitmap v11Day;
+    Bitmap carbonGaugePanel, carbonMusicPanel, carbonDockPanel, carbonSidePanel, carbonAnalogDial; Bitmap masterArtwork; Bitmap v147CarScene;
+    Bitmap[] premiumIcons=new Bitmap[9];
+    Bitmap[] approvedThemes=new Bitmap[4]; Bitmap n14Scene,n14SceneDay,n14SceneTwilight,n14SceneCarbon; Bitmap n14Header,n14Nav,n14Selected,n14Time,n14Music,n14Source,n14Dock,n14Clock; boolean carbonClock=true; Bitmap[] cinematicThemes=new Bitmap[4]; Bitmap exactElectric; Bitmap exactPearl; Bitmap exactTwilight; Bitmap nexusRoad; Bitmap signatureClock; Bitmap signatureDigital; Bitmap daySuv; Bitmap v11Night; Bitmap v11Day;
     String trackTitle="", trackArtist="", metadataSource="";
     long metadataTime=0;
     BroadcastReceiver musicInfoReceiver;
@@ -93,6 +95,7 @@ public class MainActivity extends Activity {
         }}).setNegativeButton("Cancel",null).show();
     }
     int dockIndex(float x){for(int i=0;i<dockDefaults.length;i++)if(x>=dockEdges[i]&&x<dockEdges[i+1])return i;return -1;}
+    int masterDockIndex(float x){if(x<65||x>=795)return -1;return Math.min(4,(int)((x-65)/146));}
     int localIndex=-1;
     boolean localMode=false;
 
@@ -102,7 +105,64 @@ public class MainActivity extends Activity {
     final Handler ui=new Handler();
     final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);nexusRoad=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.nexus_road);signatureClock=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.signature_clock);signatureDigital=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.signature_digital);concept=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.concept_v73);dayConcept=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.concept_day);exactElectric=BitmapFactory.decodeResource(getResources(),R.drawable.v11_exact_electric);exactPearl=BitmapFactory.decodeResource(getResources(),R.drawable.v11_exact_pearl);exactTwilight=BitmapFactory.decodeResource(getResources(),R.drawable.v11_exact_twilight);daySuv=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.day_suv);v11Night=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.v11_night_hero);v11Day=BitmapFactory.decodeResource(getResources(),com.zoma.os.R.drawable.v11_day_hero);n14Scene=BitmapFactory.decodeResource(getResources(),R.drawable.n14_scene);n14Header=BitmapFactory.decodeResource(getResources(),R.drawable.n14_header);n14Nav=BitmapFactory.decodeResource(getResources(),R.drawable.n14_nav_rail);n14Selected=BitmapFactory.decodeResource(getResources(),R.drawable.n14_nav_selected);n14Time=BitmapFactory.decodeResource(getResources(),R.drawable.n14_time_card);n14Music=BitmapFactory.decodeResource(getResources(),R.drawable.n14_music_card);n14Source=BitmapFactory.decodeResource(getResources(),R.drawable.n14_source_card);n14Dock=BitmapFactory.decodeResource(getResources(),R.drawable.n14_dock_card);n14Clock=BitmapFactory.decodeResource(getResources(),R.drawable.n14_clock_face);showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);cinematicThemes[0]=BitmapFactory.decodeResource(getResources(),R.drawable.cinematic_electric);cinematicThemes[1]=BitmapFactory.decodeResource(getResources(),R.drawable.cinematic_pearl);cinematicThemes[2]=BitmapFactory.decodeResource(getResources(),R.drawable.cinematic_twilight);cinematicThemes[3]=BitmapFactory.decodeResource(getResources(),R.drawable.cinematic_carbon);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);startMusicDiscovery();restoreUsbFolder();resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);startMusicDiscovery();restoreUsbFolder();resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
+    // Load only the selected scene and eight small themed assets. No GIF or frame loop.
+    void recycleN14(Bitmap b){if(b!=null&&!b.isRecycled())b.recycle();}
+    void loadN14Skin(){
+        recycleN14(masterArtwork); masterArtwork=null;
+        int masterId=appearance==2?R.drawable.master_carbon:appearance==1?R.drawable.master_pearl:R.drawable.master_electric;
+        masterArtwork=BitmapFactory.decodeResource(getResources(),masterId);
+        recycleN14(v147CarScene);v147CarScene=null;
+        int carRes=appearance==2?R.drawable.v147_car_scene_carbon:appearance==1?R.drawable.v147_car_scene_pearl:R.drawable.v147_car_scene_electric;
+        v147CarScene=BitmapFactory.decodeResource(getResources(),carRes);
+        if(premiumIcons[0]==null){int[] iconIds={R.drawable.premium_icon_0,R.drawable.premium_icon_1,R.drawable.premium_icon_2,R.drawable.premium_icon_3,R.drawable.premium_icon_4,R.drawable.premium_icon_5,R.drawable.premium_icon_6,R.drawable.premium_icon_7,R.drawable.premium_icon_8};for(int i=0;i<iconIds.length;i++)premiumIcons[i]=BitmapFactory.decodeResource(getResources(),iconIds[i]);}
+        // Keep large Carbon-only overlays out of RAM when Electric or Pearl is selected.
+        if(appearance==2){
+            if(carbonGaugePanel==null)carbonGaugePanel=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_gauge_panel);
+            if(carbonMusicPanel==null)carbonMusicPanel=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_music_panel);
+            if(carbonDockPanel==null)carbonDockPanel=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_dock_panel);
+            if(carbonSidePanel==null)carbonSidePanel=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_side_panel);
+            if(carbonAnalogDial==null)carbonAnalogDial=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_analog_dial);
+        }else{
+            recycleN14(carbonGaugePanel);carbonGaugePanel=null;
+            recycleN14(carbonMusicPanel);carbonMusicPanel=null;
+            recycleN14(carbonDockPanel);carbonDockPanel=null;
+            recycleN14(carbonSidePanel);carbonSidePanel=null;
+            recycleN14(carbonAnalogDial);carbonAnalogDial=null;
+        }
+        recycleN14(n14Scene);recycleN14(n14SceneDay);recycleN14(n14SceneTwilight);recycleN14(n14SceneCarbon);
+        n14Scene=null;n14SceneDay=null;n14SceneTwilight=null;n14SceneCarbon=null;
+        Bitmap[] old={n14Header,n14Nav,n14Selected,n14Time,n14Music,n14Source,n14Dock,n14Clock};
+        for(Bitmap b:old)recycleN14(b);
+        int[] ids;
+        if(appearance==1){
+            n14SceneDay=BitmapFactory.decodeResource(getResources(),R.drawable.n14_scene_day);
+            ids=new int[]{R.drawable.n14_header_day,R.drawable.n14_nav_rail_day,R.drawable.n14_nav_selected_day,R.drawable.n14_time_card_day,R.drawable.n14_music_card_day,R.drawable.n14_source_card_day,R.drawable.n14_dock_card_day,R.drawable.n14_clock_face_day};
+        }else if(appearance==2){
+            n14SceneCarbon=BitmapFactory.decodeResource(getResources(),R.drawable.n14_scene_carbon);
+            ids=new int[]{R.drawable.n14_header_carbon,R.drawable.n14_nav_rail_carbon,R.drawable.n14_nav_selected_carbon,R.drawable.n14_time_card_carbon,R.drawable.n14_music_card_carbon,R.drawable.n14_source_card_carbon,R.drawable.n14_dock_card_carbon,R.drawable.n14_clock_face_carbon};
+        }else{
+            n14Scene=BitmapFactory.decodeResource(getResources(),R.drawable.n14_scene);
+            ids=new int[]{R.drawable.n14_header,R.drawable.n14_nav_rail,R.drawable.n14_nav_selected,R.drawable.n14_time_card,R.drawable.n14_music_card,R.drawable.n14_source_card,R.drawable.n14_dock_card,R.drawable.n14_clock_face};
+        }
+        n14Header=BitmapFactory.decodeResource(getResources(),ids[0]);
+        n14Nav=BitmapFactory.decodeResource(getResources(),ids[1]);
+        n14Selected=BitmapFactory.decodeResource(getResources(),ids[2]);
+        n14Time=BitmapFactory.decodeResource(getResources(),ids[3]);
+        n14Music=BitmapFactory.decodeResource(getResources(),ids[4]);
+        n14Source=BitmapFactory.decodeResource(getResources(),ids[5]);
+        n14Dock=BitmapFactory.decodeResource(getResources(),ids[6]);
+        n14Clock=BitmapFactory.decodeResource(getResources(),ids[7]);
+    }
+    void chooseCarbonGauge(){
+        new AlertDialog.Builder(this).setTitle("Carbon Sport gauge")
+          .setSingleChoiceItems(new String[]{"Analog clock (recommended)","Speedometer (requires live OBD)"},carbonClock?0:1,
+            new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int choice){
+                carbonClock=choice==0;
+                getPreferences(MODE_PRIVATE).edit().putBoolean("carbonClock",carbonClock).apply();
+                dashboard.invalidate();d.dismiss();
+            }}).setNegativeButton("Cancel",null).show();
+    }
     // Discovery only: some players publish public metadata broadcasts, many factory players do not.
     void startMusicDiscovery(){
         IntentFilter filter=new IntentFilter();
@@ -405,7 +465,7 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||keyCode==KeyEvent.KEYCODE_HEADSETHOOK){if(localPlayer!=null){togglePlayback();return true;}}
         return super.onKeyDown(keyCode,event);
     }
-    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Twilight", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
+    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();if(n==2)chooseCarbonGauge();}}).setNegativeButton("Cancel",null).show();}
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
@@ -772,14 +832,128 @@ public class MainActivity extends Activity {
             hand(cx,cy,(float)(ss*Math.PI/30-Math.PI/2),48,1,edge);
             fill(edge);c.drawCircle(cx,cy,3,p);
         }
-        void drawApproved(){
+
+        void liteIcon(int id,float cx,float cy,int color){
+            p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.5f);p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeJoin(Paint.Join.ROUND);p.setColor(color);
+            switch(id){
+                case 0: // home
+                    c.drawLine(cx-9,cy,cx,cy-8,p);c.drawLine(cx,cy-8,cx+9,cy,p);c.drawRect(cx-6,cy,cx+6,cy+9,p);break;
+                case 1: // music
+                    c.drawLine(cx+2,cy-9,cx+2,cy+5,p);c.drawLine(cx+2,cy-9,cx+10,cy-11,p);c.drawLine(cx+10,cy-11,cx+10,cy+3,p);c.drawOval(new RectF(cx-6,cy+3,cx+2,cy+9),p);c.drawOval(new RectF(cx+2,cy+1,cx+10,cy+7),p);break;
+                case 2: // radio
+                    c.drawRoundRect(new RectF(cx-11,cy-5,cx+11,cy+8),2,2,p);c.drawLine(cx-7,cy-7,cx+7,cy-12,p);c.drawCircle(cx-5,cy+1,3,p);c.drawLine(cx+2,cy,cx+8,cy,p);c.drawLine(cx+2,cy+4,cx+8,cy+4,p);break;
+                case 3: // Android Auto arrow
+                    Path ar=new Path();ar.moveTo(cx,cy-11);ar.lineTo(cx+10,cy+9);ar.lineTo(cx,cy+4);ar.lineTo(cx-10,cy+9);ar.close();c.drawPath(ar,p);break;
+                case 4: // OBD engine
+                    c.drawRect(cx-9,cy-5,cx+8,cy+7,p);c.drawLine(cx-5,cy-9,cx+4,cy-9,p);c.drawLine(cx-11,cy-2,cx-13,cy-2,p);c.drawLine(cx+9,cy+1,cx+13,cy+1,p);break;
+                case 5: // apps
+                    for(int i=0;i<4;i++){float x=cx-10+(i%2)*12,y=cy-9+(i/2)*12;c.drawRect(x,y,x+8,y+8,p);}break;
+                case 6: // settings
+                    c.drawCircle(cx,cy,8,p);c.drawCircle(cx,cy,3,p);for(int i=0;i<8;i++){double angle=i*Math.PI/4;c.drawLine(cx+(float)Math.cos(angle)*9,cy+(float)Math.sin(angle)*9,cx+(float)Math.cos(angle)*12,cy+(float)Math.sin(angle)*12,p);}break;
+                case 7: // folder
+                    c.drawRoundRect(new RectF(cx-11,cy-5,cx+11,cy+9),2,2,p);c.drawLine(cx-9,cy-5,cx-5,cy-9,p);c.drawLine(cx-5,cy-9,cx+1,cy-9,p);break;
+            }
+            p.setStyle(Paint.Style.FILL);
+        }
+        void premiumIcon(int id,float cx,float cy,float size){
+            if(id<0||id>=premiumIcons.length||premiumIcons[id]==null)return;
+            Bitmap b=premiumIcons[id];p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);p.setAlpha(255);
+            c.drawBitmap(b,null,new RectF(cx-size/2,cy-size/2,cx+size/2,cy+size/2),p);
+        }
+        void carbonDial(float cx,float cy,float radius,boolean clockMode,int red){
+            p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(5);p.setColor(col("#333944"));c.drawCircle(cx,cy,radius,p);
+            p.setStrokeWidth(3);p.setColor(red);c.drawCircle(cx,cy,radius-5,p);
+            for(int i=0;i<12;i++){double a=i*Math.PI/6-Math.PI/2;float x1=cx+(radius-20)*(float)Math.cos(a),y1=cy+(radius-20)*(float)Math.sin(a);float x2=cx+(radius-10)*(float)Math.cos(a),y2=cy+(radius-10)*(float)Math.sin(a);p.setStrokeWidth(i%3==0?3:1);p.setColor(i%3==0?Color.WHITE:col("#8E96A5"));c.drawLine(x1,y1,x2,y2,p);}
+            p.setStyle(Paint.Style.FILL);
+            if(clockMode){n14ClockHands(cx,cy,red);}
+            else {centerText(speed>=0&&!simulated?String.valueOf(speed):"--",cx,cy+9,39,Color.WHITE,true);centerText("km/h",cx,cy+30,12,Color.WHITE,false);if(speed<0||simulated)centerText("NO LIVE OBD",cx,cy+47,9,red,false);}
+        }
+        void drawCarbonSport(){
+            int red=col("#FF2738"),fg=Color.WHITE,muted=col("#B9C2D0");
+            n14Image(n14SceneCarbon,0,0,800,480);
+            n14Image(v147CarScene,450,48,800,248);
+            n14Image(n14Header,0,0,800,40);
+            n14Image(carbonSidePanel,4,42,83,469);
+            String[] menu={"Home","Media","Radio","Auto","OBD","Apps","Settings"};
+            for(int i=0;i<7;i++){
+                float yy=50+i*56;
+                if(i==0){p.reset();p.setAntiAlias(true);p.setColor(col("#9A0C15"));c.drawRoundRect(new RectF(8,yy,78,yy+49),9,9,p);}
+                premiumIcon(i,43,yy+18,29);
+                centerText(menu[i],43,yy+39,10,fg,false);
+            }
+            text("ZomaOS  NEXUS V14.8",93,26,17,fg,true);
+            text("USB",565,25,11,muted,true);text("BT",617,25,11,muted,true);text("Wi-Fi",661,25,11,muted,true);
+            fitCenteredText(clockText(),749,24,17,88,fg,true);
+            n14Image(carbonGaugePanel,89,47,424,231);
+            if(carbonClock){
+                n14Image(carbonAnalogDial,166,47,344,225);
+                n14ClockHands(255,136,red);
+            }else carbonDial(255,136,79,false,red);
+            centerText(carbonClock?"ANALOG CLOCK":"SPEEDOMETER",255,222,12,fg,true);
+            text("GEELY X7",679,65,17,fg,true);
+            // Auxiliary gauges intentionally inactive until connected to real vehicle sensors
+            centerText("FUEL",117,110,11,muted,true);centerText("--",117,145,21,fg,true);
+            centerText("TEMP",396,110,11,muted,true);centerText("--",396,145,21,fg,true);
+            n14Image(carbonMusicPanel,91,236,788,350);
+            if(albumArt!=null){fill(Color.WHITE);c.drawBitmap(albumArt,null,new RectF(107,249,173,329),p);}
+            else premiumIcon(1,138,286,65);
+            String song=(usbMode||localMode)?trackTitle:"Choose USB music";
+            if(song==null||song.length()==0)song="Choose USB music";
+            fitText(song,188,265,15,226,fg,true);
+            String artist=(usbMode||localMode)?trackArtist:"No track selected";
+            fitText(artist==null?"":artist,188,290,11,225,muted,false);
+            drawLiveProgress(MUSIC_SEEK_LEFT,316,MUSIC_SEEK_RIGHT,usbMode||localMode);
+            premiumIcon(8,444,274,23);
+            centerText("PREV",495,318,12,fg,true);
+            centerText(localPlayer!=null&&localPlayer.isPlaying()?"PAUSE":"PLAY",587,318,14,red,true);
+            centerText("NEXT",691,318,12,fg,true);
+            for(int i=0;i<5;i++){
+                float l=dockEdges[i]+3,r=dockEdges[i+1]-4;
+                n14Image(carbonDockPanel,l,363,r,435);
+                premiumIcon(i==0?8:i==1?2:i==2?3:i==3?4:7,(l+r)/2,388,43);
+                fitCenteredText(dockLabel(i),(l+r)/2,416,12,r-l-8,fg,true);
+            }
+            centerText("CARBON SPORT",420,456,14,red,true);
+        }
+
+        void drawMasterV15(){
             boolean day=appearance==1;
-            int edge=appearance==3?col("#FF4C59"):appearance==2?col("#BE6AFF"):col("#1DD6FF");
-            int fg=day?col("#E8F4FF"):Color.WHITE;
-            int muted=col("#B6D0E7");
+            int accent=appearance==2?col("#FF2738"):day?col("#1373CA"):col("#14CAFF");
+            int fg=day?col("#172A40"):Color.WHITE;
+            n14Image(masterArtwork,0,0,800,480);
+            float cx=day?224:228, cy=day?174:154; // calibrated to the center of the master clock bezel
+            Calendar now=Calendar.getInstance();
+            float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
+            if(carbonClock){
+                hand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),day?46:55,5,fg);
+                hand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),day?65:76,3,fg);
+                hand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),day?73:85,1,accent);
+                fill(Color.BLACK);c.drawCircle(cx,cy,7,p);fill(accent);c.drawCircle(cx,cy,4,p);
+            }else{
+                centerText(speed>=0&&!simulated?String.valueOf(speed):"--",cx,cy+11,37,fg,true);
+                centerText("km/h",cx,cy+29,11,fg,false);
+            }
+            fitCenteredText(clockText(),760,26,18,67,fg,true);
+            String title=(usbMode||localMode)?trackTitle:"Choose USB music";
+            String artist=(usbMode||localMode)?trackArtist:"USB MUSIC";
+            if(title==null||title.length()==0)title="Choose USB music";
+            if(artist==null)artist="";
+            fitText(title,day?190:188,day?318:286,day?11:15,day?165:219,fg,true);
+            fitText(artist,day?190:188,day?338:306,day?9:11,day?165:219,fg,false);
+            // Static premium art is intentionally not animated; only hands/progress update.
+        }
+
+        void drawApproved(){
+            if(masterArtwork!=null){drawMasterV15();return;}
+            if(appearance==2){drawCarbonSport();return;}
+            boolean day=appearance==1;
+            int edge=appearance==1?col("#1265B0"):appearance==2?col("#FF3C4B"):col("#1DD6FF");
+            int fg=day?col("#162A3C"):Color.WHITE;
+            int muted=day?col("#315A7D"):col("#B6D0E7");
             // First real native asset integration: independent decorative assets only.
             // No clock text, song titles, seek state, or button labels are baked into these PNGs.
-            n14Image(n14Scene,0,0,800,480);
+            n14Image(appearance==1?n14SceneDay:appearance==2?n14SceneCarbon:n14Scene,0,0,800,480);
+            n14Image(v147CarScene,450,48,800,248);
             n14Image(n14Header,0,0,800,46);
             n14Image(n14Nav,4,49,91,459);
             n14Image(n14Selected,9,58,85,115);
@@ -790,10 +964,10 @@ public class MainActivity extends Activity {
             String[] symbols={"⌂","♫","▣","▲","◇","▦","⚙"};
             for(int i=0;i<7;i++){
                 float top=58+i*56;
-                centerText(symbols[i],46,top+27,23,i==0?edge:fg,true);
+                premiumIcon(i,46,top+22,27);
                 centerText(menu[i],46,top+45,11,fg,false);
             }
-            text("ZomaOS  NEXUS V14.0",107,29,19,fg,true);
+            text("ZomaOS  NEXUS V14.8",107,29,19,fg,true);
             text("USB",556,29,12,muted,true);text("BT",609,29,12,muted,true);text("Wi-Fi",656,29,12,muted,true);
             fitCenteredText(clockText(),744,24,17,108,fg,true);
             fitCenteredText(clockText(),218,122,46,222,fg,true);
@@ -802,7 +976,7 @@ public class MainActivity extends Activity {
             text("GEELY X7",688,87,17,fg,true);
             // Album art is genuinely dynamic. No fake song metadata is printed in the artwork.
             if(albumArt!=null){fill(Color.WHITE);c.drawBitmap(albumArt,null,new RectF(115,213,182,281),p);}
-            else centerText("♫",148,262,42,edge,true);
+            else liteIcon(1,148,247,edge);
             String song=(usbMode||localMode)?trackTitle:"Choose USB music";
             if(song==null||song.length()==0)song="Choose USB music";
             fitText(song,197,225,16,238,fg,true);
@@ -816,32 +990,39 @@ public class MainActivity extends Activity {
             text("Source",474,230,17,fg,true);
             text(usbMode?"USB MUSIC":localMode?"LOCAL MUSIC":"Select USB",474,255,15,fg,true);
             text(usbMode?"USB playback active":localMode?"Local playback active":"No source selected",474,277,11,muted,false);
-            if(showAnalog){n14Image(n14Clock,631,182,787,338);n14ClockHands(709,260,edge);}
+            if(showAnalog){
+                n14Image(n14Clock,631,182,787,338);
+                if(appearance==2&&!carbonClock){
+                    centerText(speed>=0&&!simulated?String.valueOf(speed):"--",709,259,40,fg,true);
+                    centerText("km/h",709,283,14,edge,true);
+                    if(speed<0||simulated)centerText("NO LIVE OBD",709,302,9,fg,false);
+                }else n14ClockHands(709,260,edge);
+            }
             String[] icons={"♫","▣","▲","◇","▱"};
             for(int i=0;i<5;i++){
                 float l=dockEdges[i]+3,r=dockEdges[i+1]-4;
                 n14Image(n14Dock,l,364,r,423);
-                centerText(icons[i],(l+r)/2,385,20,edge,true);
+                premiumIcon(i==0?8:i==1?2:i==2?3:i==3?4:7,(l+r)/2,386,36);
                 fitCenteredText(dockLabel(i),(l+r)/2,410,12,r-l-10,fg,true);
             }
-            fitCenteredText(appearance==0?"Electric Night":appearance==1?"Pearl Day":appearance==2?"Twilight":"Carbon Sport",403,450,18,235,edge,true);
+            fitCenteredText(appearance==0?"Electric Night":appearance==1?"Pearl Day":"Carbon Sport",403,450,18,235,edge,true);
         }
         void drawV11(){drawApproved();}
         @Override protected void onDraw(Canvas canvas){
             c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);
-            drawV11();c.restore();postInvalidateDelayed(1000);
+            drawV11();c.restore();postInvalidateDelayed(1000); // 1 FPS for clock seconds; no 30/60 FPS continuous scene animation
         }
         @Override public boolean onTouchEvent(MotionEvent e){
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();
             int a=e.getAction();
             if(a==MotionEvent.ACTION_DOWN){
-                if(y>=364&&y<=423&&x>=dockEdges[0]&&x<dockEdges[5]){
-                    pressedDock=dockIndex(x);dockLongPressed=false;
+                if(y>=352&&y<=454&&x>=65&&x<795){
+                    pressedDock=masterDockIndex(x);dockLongPressed=false;
                     final int idx=pressedDock;
                     pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
                     dockHandler.postDelayed(pendingDockLongPress,650);return true;
                 }
-                if(y>=263&&y<=293&&x>=MUSIC_SEEK_LEFT-6&&x<=MUSIC_SEEK_RIGHT+6&&localPlayer!=null){draggingSeek=true;seekMusic(x);return true;}
+                if(y>=(appearance==2?306:263)&&y<=(appearance==2?326:293)&&x>=MUSIC_SEEK_LEFT-6&&x<=MUSIC_SEEK_RIGHT+6&&localPlayer!=null){draggingSeek=true;seekMusic(x);return true;}
                 return true;
             }
             if(a==MotionEvent.ACTION_CANCEL){
@@ -850,7 +1031,7 @@ public class MainActivity extends Activity {
             }
             if(a==MotionEvent.ACTION_MOVE){
                 if(draggingSeek){seekMusic(x);return true;}
-                if(pressedDock>=0&&(y<364||y>423||dockIndex(x)!=pressedDock)){
+                if(pressedDock>=0&&(y<352||y>454||masterDockIndex(x)!=pressedDock)){
                     if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
                     pendingDockLongPress=null;pressedDock=-1;
                 }
@@ -872,15 +1053,25 @@ public class MainActivity extends Activity {
                 if(menuIndex==5){showAppCenter();return true;}
                 showZomaSettings();return true;
             }
+            // V15 master artwork interaction map (800x480).
+            if(y>=263&&y<=342&&x>=525&&x<=718){
+                if(x<593){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}
+                else if(x<650)togglePlayback();
+                else {if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}
+                return true;
+            }
+            if(y>=58&&y<=260&&x>=116&&x<=336){chooseCarbonGauge();return true;}
             // Controls on music card, matching the approved reference's positions.
-            if(y>=300&&y<=349&&x>=194&&x<=450){
+            if(appearance==2&&y>=292&&y<=350&&x>=458&&x<=766){if(x<542){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}else if(x<642)togglePlayback();else {if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}return true;}
+            if(y>=300&&y<=349&&x>=194&&x<=450&&appearance!=2){
                 if(x<258){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}
                 else if(x<331)togglePlayback();
                 else {if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}
                 return true;
             }
+            if(appearance==2&&y>=54&&y<=231&&x>=170&&x<=342){chooseCarbonGauge();return true;}
             if(y>=196&&y<=349&&x>=101&&x<194){if(usbMode)showUsbTracks();else openRememberedUsb();return true;}
-            if(y>=205&&y<=301&&x>=459&&x<620){openRememberedUsb();return true;}
+            if(appearance!=2&&y>=205&&y<=301&&x>=459&&x<620){openRememberedUsb();return true;}
             if(y<50&&x<380){showZomaSettings();return true;}
             return true;
         }

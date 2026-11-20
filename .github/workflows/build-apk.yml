@@ -1,43 +1,61 @@
-
-name: Build ZomaOS APK
-
+name: ZomaOS V15.3 Clean Verified Build
 on:
   workflow_dispatch:
   push:
     branches: [main, master]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-
-      - name: Remove legacy images
+      - name: Enforce clean source resources
+        shell: bash
         run: |
-          cd app/src/main/res/drawable-nodpi
-          rm -f concept_v73.png
-          rm -f v11_exact_pearl.png
-          rm -f v11_exact_twilight.png
-          rm -f v11_exact_electric.png
-          rm -f master_carbon.png
-          rm -f master_electric.png
-          rm -f master_pearl.png
-          echo "Legacy images removed"
-
-      - name: Build debug APK
+          set -euo pipefail
+          python3 - <<'PYCLEAN'
+          from pathlib import Path
+          import shutil
+          root=Path('app/src/main')
+          allowed={'master_carbon.jpg','master_electric.jpg','master_pearl.jpg','zoma_icon.png'}
+          res=root/'res'
+          for p in sorted(res.rglob('*'),reverse=True):
+              if p.is_file() and not (p.parent==res/'drawable-nodpi' and p.name in allowed):
+                  print('Pruning legacy resource:',p)
+                  p.unlink()
+          for p in sorted(res.rglob('*'),reverse=True):
+              if p.is_dir() and not any(p.iterdir()):p.rmdir()
+          java=root/'java'
+          for p in java.rglob('*.java'):
+              if p.relative_to(java).as_posix()!='com/zoma/os/MainActivity.java':
+                  print('Pruning legacy Java:',p)
+                  p.unlink()
+          found={p.name for p in (res/'drawable-nodpi').iterdir() if p.is_file()}
+          assert found==allowed, f'Unexpected resource set: {found}'
+          print('Clean resources verified:',sorted(found))
+          PYCLEAN
+      - name: Build APK
         run: gradle --no-daemon assembleDebug
-
+      - name: Verify built APK contains only expected images
+        shell: bash
+        run: |
+          python3 - <<'PYVERIFY'
+          import zipfile
+          apk='app/build/outputs/apk/debug/app-debug.apk'
+          allowed={'master_carbon.jpg','master_electric.jpg','master_pearl.jpg','zoma_icon.png'}
+          with zipfile.ZipFile(apk) as z:
+              imgs=[n for n in z.namelist() if n.startswith('res/') and n.lower().endswith(('.png','.jpg','.jpeg','.webp'))]
+              names={n.rsplit('/',1)[-1] for n in imgs}
+              print('APK images:',imgs)
+              assert names==allowed and len(imgs)==4, f'APK contains unexpected images: {imgs}'
+          PYVERIFY
       - uses: actions/upload-artifact@v4
         with:
-          name: ZomaOS-V15.2-Lite-Premium
+          name: ZomaOS_V15_3_Clean_Verified_APK
           path: app/build/outputs/apk/debug/app-debug.apk
-

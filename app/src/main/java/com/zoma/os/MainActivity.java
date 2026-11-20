@@ -47,6 +47,7 @@ public class MainActivity extends Activity {
     final Handler resumeHandler=new Handler();
     final Runnable resumeTick=new Runnable(){public void run(){saveUsbPlaybackState();resumeHandler.postDelayed(this,5000);}};
     Bitmap concept; Bitmap dayConcept; Bitmap albumArt; boolean draggingSeek=false; boolean showAnalog=true; int selectedPage=0;
+    boolean touchTestMode=false; float testX=-1,testY=-1; String testLabel="Tap any control"; int testCount=0;
     AudioManager audioManager; boolean hasAudioFocus=false; boolean clock12=false; int appearance=0;
     AudioManager.OnAudioFocusChangeListener focusListener=new AudioManager.OnAudioFocusChangeListener(){public void onAudioFocusChange(int change){if(change==AudioManager.AUDIOFOCUS_LOSS||change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT){pauseAudio();}}};
     // User-configurable dock. Empty preference means the original built-in action.
@@ -110,50 +111,10 @@ public class MainActivity extends Activity {
     // Load only the selected scene and eight small themed assets. No GIF or frame loop.
     void recycleN14(Bitmap b){if(b!=null&&!b.isRecycled())b.recycle();}
     void loadN14Skin(){
-        recycleN14(masterArtwork); masterArtwork=null;
+        // V15.3 renders the selected 800x480 master only. Legacy V14 scene assets are not loaded.
+        recycleN14(masterArtwork);
         int masterId=appearance==2?R.drawable.master_carbon:appearance==1?R.drawable.master_pearl:R.drawable.master_electric;
         masterArtwork=BitmapFactory.decodeResource(getResources(),masterId);
-        recycleN14(v147CarScene);v147CarScene=null;
-        int carRes=appearance==2?R.drawable.v147_car_scene_carbon:appearance==1?R.drawable.v147_car_scene_pearl:R.drawable.v147_car_scene_electric;
-        v147CarScene=BitmapFactory.decodeResource(getResources(),carRes);
-        if(premiumIcons[0]==null){int[] iconIds={R.drawable.premium_icon_0,R.drawable.premium_icon_1,R.drawable.premium_icon_2,R.drawable.premium_icon_3,R.drawable.premium_icon_4,R.drawable.premium_icon_5,R.drawable.premium_icon_6,R.drawable.premium_icon_7,R.drawable.premium_icon_8};for(int i=0;i<iconIds.length;i++)premiumIcons[i]=BitmapFactory.decodeResource(getResources(),iconIds[i]);}
-        // Keep large Carbon-only overlays out of RAM when Electric or Pearl is selected.
-        if(appearance==2){
-            if(carbonGaugePanel==null)carbonGaugePanel=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_gauge_panel);
-            if(carbonMusicPanel==null)carbonMusicPanel=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_music_panel);
-            if(carbonDockPanel==null)carbonDockPanel=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_dock_panel);
-            if(carbonSidePanel==null)carbonSidePanel=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_side_panel);
-            if(carbonAnalogDial==null)carbonAnalogDial=BitmapFactory.decodeResource(getResources(),R.drawable.carbon_analog_dial);
-        }else{
-            recycleN14(carbonGaugePanel);carbonGaugePanel=null;
-            recycleN14(carbonMusicPanel);carbonMusicPanel=null;
-            recycleN14(carbonDockPanel);carbonDockPanel=null;
-            recycleN14(carbonSidePanel);carbonSidePanel=null;
-            recycleN14(carbonAnalogDial);carbonAnalogDial=null;
-        }
-        recycleN14(n14Scene);recycleN14(n14SceneDay);recycleN14(n14SceneTwilight);recycleN14(n14SceneCarbon);
-        n14Scene=null;n14SceneDay=null;n14SceneTwilight=null;n14SceneCarbon=null;
-        Bitmap[] old={n14Header,n14Nav,n14Selected,n14Time,n14Music,n14Source,n14Dock,n14Clock};
-        for(Bitmap b:old)recycleN14(b);
-        int[] ids;
-        if(appearance==1){
-            n14SceneDay=BitmapFactory.decodeResource(getResources(),R.drawable.n14_scene_day);
-            ids=new int[]{R.drawable.n14_header_day,R.drawable.n14_nav_rail_day,R.drawable.n14_nav_selected_day,R.drawable.n14_time_card_day,R.drawable.n14_music_card_day,R.drawable.n14_source_card_day,R.drawable.n14_dock_card_day,R.drawable.n14_clock_face_day};
-        }else if(appearance==2){
-            n14SceneCarbon=BitmapFactory.decodeResource(getResources(),R.drawable.n14_scene_carbon);
-            ids=new int[]{R.drawable.n14_header_carbon,R.drawable.n14_nav_rail_carbon,R.drawable.n14_nav_selected_carbon,R.drawable.n14_time_card_carbon,R.drawable.n14_music_card_carbon,R.drawable.n14_source_card_carbon,R.drawable.n14_dock_card_carbon,R.drawable.n14_clock_face_carbon};
-        }else{
-            n14Scene=BitmapFactory.decodeResource(getResources(),R.drawable.n14_scene);
-            ids=new int[]{R.drawable.n14_header,R.drawable.n14_nav_rail,R.drawable.n14_nav_selected,R.drawable.n14_time_card,R.drawable.n14_music_card,R.drawable.n14_source_card,R.drawable.n14_dock_card,R.drawable.n14_clock_face};
-        }
-        n14Header=BitmapFactory.decodeResource(getResources(),ids[0]);
-        n14Nav=BitmapFactory.decodeResource(getResources(),ids[1]);
-        n14Selected=BitmapFactory.decodeResource(getResources(),ids[2]);
-        n14Time=BitmapFactory.decodeResource(getResources(),ids[3]);
-        n14Music=BitmapFactory.decodeResource(getResources(),ids[4]);
-        n14Source=BitmapFactory.decodeResource(getResources(),ids[5]);
-        n14Dock=BitmapFactory.decodeResource(getResources(),ids[6]);
-        n14Clock=BitmapFactory.decodeResource(getResources(),ids[7]);
     }
     void chooseCarbonGauge(){
         new AlertDialog.Builder(this).setTitle("Carbon Sport gauge")
@@ -511,10 +472,10 @@ public class MainActivity extends Activity {
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
-        final String[] items={"Appearance • Night / Daylight", "Accent colors", "Clock • 12 / 24 hour", "Analog clock • Show / hide", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
-        final Dialog dialog=new Dialog(this);dialog.setTitle("ZomaOS V12.4 • Settings");
+        final String[] items={"Appearance • Night / Daylight", "Accent colors", "Clock • 12 / 24 hour", "Analog clock • Show / hide", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults", "Touch Test Mode (safe / no actions)"};
+        final Dialog dialog=new Dialog(this);dialog.setTitle("ZomaOS V15.3 • Settings");
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(16,10,16,10);panel.setBackgroundColor(Color.rgb(16,39,59));
-        TextView heading=new TextView(this);heading.setText("ZOMAOS V12.4   /   SETTINGS");heading.setTextSize(22);heading.setTextColor(Color.WHITE);heading.setPadding(12,8,8,14);panel.addView(heading);
+        TextView heading=new TextView(this);heading.setText("ZOMAOS V15.3   /   SETTINGS");heading.setTextSize(22);heading.setTextColor(Color.WHITE);heading.setPadding(12,8,8,14);panel.addView(heading);
         ListView list=new ListView(this);list.setCacheColorHint(Color.TRANSPARENT);list.setDividerHeight(1);list.setScrollingCacheEnabled(false);
         ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,items){@Override public View getView(int pos,View convert,android.view.ViewGroup parent){TextView v=(TextView)super.getView(pos,convert,parent);v.setTextColor(Color.WHITE);v.setTextSize(17);v.setPadding(14,10,8,10);return v;}};
         list.setAdapter(adapter);panel.addView(list,new LinearLayout.LayoutParams(-1,0,1));
@@ -526,6 +487,7 @@ public class MainActivity extends Activity {
             case 7:maintenanceCenter();break;case 8:toggleOilReminder();break;
             case 9:maintenanceInput("Oil change interval (km)","oil_interval",getPreferences(MODE_PRIVATE).getInt("oil_interval",7000));break;
             case 10:showMode();break;case 11:launch(new String[]{},"settings");break;
+            case 13:touchTestMode=true;testCount=0;testX=-1;testY=-1;testLabel="Tap buttons to verify hit zones";dashboard.invalidate();break;
             case 12:new AlertDialog.Builder(MainActivity.this).setTitle("Restore defaults?").setPositiveButton("Reset",new DialogInterface.OnClickListener(){public void onClick(DialogInterface a,int b){getPreferences(MODE_PRIVATE).edit().clear().apply();theme=0;showAnalog=true;centerMode=0;appearance=0;clock12=false;dashboard.invalidate();}}).setNegativeButton("Cancel",null).show();break;
         }}});
         dialog.setContentView(panel);dialog.show();if(dialog.getWindow()!=null)dialog.getWindow().setLayout(-1,-1);
@@ -571,7 +533,9 @@ public class MainActivity extends Activity {
         try{
             int duration=localPlayer.getDuration();
             if(duration>0){
-                float fraction=Math.max(0f,Math.min(1f,(x-221f)/(506f-221f)));
+                float seekLeft=appearance==1?255f:221f;
+                float seekRight=appearance==1?480f:506f;
+                float fraction=Math.max(0f,Math.min(1f,(x-seekLeft)/(seekRight-seekLeft)));
                 localPlayer.seekTo((int)(duration*fraction));
                 dashboard.invalidate();
             }
@@ -910,53 +874,7 @@ public class MainActivity extends Activity {
             if(clockMode){n14ClockHands(cx,cy,red);}
             else {centerText(speed>=0&&!simulated?String.valueOf(speed):"--",cx,cy+9,39,Color.WHITE,true);centerText("km/h",cx,cy+30,12,Color.WHITE,false);if(speed<0||simulated)centerText("NO LIVE OBD",cx,cy+47,9,red,false);}
         }
-        void drawCarbonSport(){
-            int red=col("#FF2738"),fg=Color.WHITE,muted=col("#B9C2D0");
-            n14Image(n14SceneCarbon,0,0,800,480);
-            n14Image(v147CarScene,450,48,800,248);
-            n14Image(n14Header,0,0,800,40);
-            n14Image(carbonSidePanel,4,42,83,469);
-            String[] menu={"Home","Media","Radio","Auto","OBD","Apps","Settings"};
-            for(int i=0;i<7;i++){
-                float yy=50+i*56;
-                if(i==0){p.reset();p.setAntiAlias(true);p.setColor(col("#9A0C15"));c.drawRoundRect(new RectF(8,yy,78,yy+49),9,9,p);}
-                premiumIcon(i,43,yy+18,29);
-                centerText(menu[i],43,yy+39,10,fg,false);
-            }
-            text("ZomaOS  NEXUS V14.8",93,26,17,fg,true);
-            text("USB",565,25,11,muted,true);text("BT",617,25,11,muted,true);text("Wi-Fi",661,25,11,muted,true);
-            fitCenteredText(clockText(),749,24,17,88,fg,true);
-            n14Image(carbonGaugePanel,89,47,424,231);
-            if(carbonClock){
-                n14Image(carbonAnalogDial,166,47,344,225);
-                n14ClockHands(255,136,red);
-            }else carbonDial(255,136,79,false,red);
-            centerText(carbonClock?"ANALOG CLOCK":"SPEEDOMETER",255,222,12,fg,true);
-            text("GEELY X7",679,65,17,fg,true);
-            // Auxiliary gauges intentionally inactive until connected to real vehicle sensors
-            centerText("FUEL",117,110,11,muted,true);centerText("--",117,145,21,fg,true);
-            centerText("TEMP",396,110,11,muted,true);centerText("--",396,145,21,fg,true);
-            n14Image(carbonMusicPanel,91,236,788,350);
-            if(albumArt!=null){fill(Color.WHITE);c.drawBitmap(albumArt,null,new RectF(107,249,173,329),p);}
-            else premiumIcon(1,138,286,65);
-            String song=(usbMode||localMode)?trackTitle:"Choose USB music";
-            if(song==null||song.length()==0)song="Choose USB music";
-            fitText(song,188,265,15,226,fg,true);
-            String artist=(usbMode||localMode)?trackArtist:"No track selected";
-            fitText(artist==null?"":artist,188,290,11,225,muted,false);
-            drawLiveProgress(MUSIC_SEEK_LEFT,316,MUSIC_SEEK_RIGHT,usbMode||localMode);
-            premiumIcon(8,444,274,23);
-            centerText("PREV",495,318,12,fg,true);
-            centerText(localPlayer!=null&&localPlayer.isPlaying()?"PAUSE":"PLAY",587,318,14,red,true);
-            centerText("NEXT",691,318,12,fg,true);
-            for(int i=0;i<5;i++){
-                float l=dockEdges[i]+3,r=dockEdges[i+1]-4;
-                n14Image(carbonDockPanel,l,363,r,435);
-                premiumIcon(i==0?8:i==1?2:i==2?3:i==3?4:7,(l+r)/2,388,43);
-                fitCenteredText(dockLabel(i),(l+r)/2,416,12,r-l-8,fg,true);
-            }
-            centerText("CARBON SPORT",420,456,14,red,true);
-        }
+        void drawCarbonSport(){drawMasterV15();}
 
         // V15.3: cover baked media labels with a live player panel.
         // Theme art remains full resolution; only the media region is redrawn.
@@ -1031,78 +949,41 @@ public class MainActivity extends Activity {
             centerText("▶|",700,313,22,fg,true);
         }
 
-        void drawApproved(){
-            if(masterArtwork!=null){drawMasterV15();return;}
-            if(appearance==2){drawCarbonSport();return;}
-            boolean day=appearance==1;
-            int edge=appearance==1?col("#1265B0"):appearance==2?col("#FF3C4B"):col("#1DD6FF");
-            int fg=day?col("#162A3C"):Color.WHITE;
-            int muted=day?col("#315A7D"):col("#B6D0E7");
-            // First real native asset integration: independent decorative assets only.
-            // No clock text, song titles, seek state, or button labels are baked into these PNGs.
-            n14Image(appearance==1?n14SceneDay:appearance==2?n14SceneCarbon:n14Scene,0,0,800,480);
-            n14Image(v147CarScene,450,48,800,248);
-            n14Image(n14Header,0,0,800,46);
-            n14Image(n14Nav,4,49,91,459);
-            n14Image(n14Selected,9,58,85,115);
-            n14Image(n14Time,100,65,385,177);
-            n14Image(n14Music,100,196,445,352);
-            n14Image(n14Source,451,207,615,319);
-            String[] menu={"Home","Media","Radio","Auto","OBD","Apps","Settings"};
-            String[] symbols={"⌂","♫","▣","▲","◇","▦","⚙"};
-            for(int i=0;i<7;i++){
-                float top=58+i*56;
-                premiumIcon(i,46,top+22,27);
-                centerText(menu[i],46,top+45,11,fg,false);
-            }
-            text("ZomaOS  NEXUS V14.8",107,29,19,fg,true);
-            text("USB",556,29,12,muted,true);text("BT",609,29,12,muted,true);text("Wi-Fi",656,29,12,muted,true);
-            fitCenteredText(clockText(),744,24,17,108,fg,true);
-            fitCenteredText(clockText(),218,122,46,222,fg,true);
-            centerText(new SimpleDateFormat("EEE, MMM d, yyyy",Locale.ENGLISH).format(new Date()),227,152,13,muted,false);
-            centerText("Weather --",336,151,11,muted,false);
-            text("GEELY X7",688,87,17,fg,true);
-            // Album art is genuinely dynamic. No fake song metadata is printed in the artwork.
-            if(albumArt!=null){fill(Color.WHITE);c.drawBitmap(albumArt,null,new RectF(115,213,182,281),p);}
-            else liteIcon(1,148,247,edge);
-            String song=(usbMode||localMode)?trackTitle:"Choose USB music";
-            if(song==null||song.length()==0)song="Choose USB music";
-            fitText(song,197,225,16,238,fg,true);
-            String artist=(usbMode||localMode)?trackArtist:"No track selected";
-            if(artist==null)artist="";
-            fitText(artist,197,248,12,237,muted,false);
-            drawLiveProgress(MUSIC_SEEK_LEFT,274,MUSIC_SEEK_RIGHT,usbMode||localMode);
-            centerText("PREV",221,326,14,fg,true);
-            centerText(localPlayer!=null&&localPlayer.isPlaying()?"PAUSE":"PLAY",294,326,14,edge,true);
-            centerText("NEXT",368,326,14,fg,true);
-            text("Source",474,230,17,fg,true);
-            text(usbMode?"USB MUSIC":localMode?"LOCAL MUSIC":"Select USB",474,255,15,fg,true);
-            text(usbMode?"USB playback active":localMode?"Local playback active":"No source selected",474,277,11,muted,false);
-            if(showAnalog){
-                n14Image(n14Clock,631,182,787,338);
-                if(appearance==2&&!carbonClock){
-                    centerText(speed>=0&&!simulated?String.valueOf(speed):"--",709,259,40,fg,true);
-                    centerText("km/h",709,283,14,edge,true);
-                    if(speed<0||simulated)centerText("NO LIVE OBD",709,302,9,fg,false);
-                }else n14ClockHands(709,260,edge);
-            }
-            String[] icons={"♫","▣","▲","◇","▱"};
-            for(int i=0;i<5;i++){
-                float l=dockEdges[i]+3,r=dockEdges[i+1]-4;
-                n14Image(n14Dock,l,364,r,423);
-                premiumIcon(i==0?8:i==1?2:i==2?3:i==3?4:7,(l+r)/2,386,36);
-                fitCenteredText(dockLabel(i),(l+r)/2,410,12,r-l-10,fg,true);
-            }
-            fitCenteredText(appearance==0?"Electric Night":appearance==1?"Pearl Day":"Carbon Sport",403,450,18,235,edge,true);
-        }
+        void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}
+        String testRegion(float x,float y){
+            if(x>=90&&x<797&&y>=357&&y<=465){int i=masterDockIndex(x);return "DOCK: "+(i>=0&&i<5?dockLabel(i):"Outside dock");}
+            if(x<107&&y>=65&&y<354){if(y<125)return "LEFT: Home";if(y<183)return "LEFT: Navigation";if(y<240)return "LEFT: Music";if(y<298)return "LEFT: Phone";return "LEFT: Settings";}
+            if(y>=(appearance==1?322:316)&&y<=(appearance==1?339:332)&&x>=(appearance==1?255:221)&&x<=(appearance==1?480:506))return "MUSIC: Seek bar (USB)";
+            if(y>=276&&y<=347&&x>=518&&x<=738)return x<588?"MUSIC: Previous":x<665?"MUSIC: Play/Pause":"MUSIC: Next";
+            if(y>=58&&y<=260&&x>=116&&x<=336)return "CLOCK / GAUGE";
+            if(y>=270&&y<=349&&x>=130&&x<214)return "MUSIC: Track list";
+            if(y<65)return "HEADER: Display only";
+            return "NO ACTION (empty area)";
+        }
+        void drawTouchTestOverlay(){
+            fill(Color.argb(220,5,17,30));c.drawRoundRect(new RectF(150,6,795,56),9,9,p);
+            text("TOUCH TEST  |  "+testLabel,161,27,15,Color.WHITE,true);
+            text("x="+(int)testX+"  y="+(int)testY+"  taps="+testCount+"  |  EXIT: hold top-right 2 sec",161,46,11,col("#5FE5FF"),false);
+            if(testX>=0){fill(col("#FFFF4B"));c.drawCircle(testX,testY,8,p);fill(Color.BLACK);c.drawCircle(testX,testY,3,p);}
+        }
         @Override protected void onDraw(Canvas canvas){
             c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);
-            drawV11();c.restore();postInvalidateDelayed(1000); // 1 FPS for clock seconds; no 30/60 FPS continuous scene animation
+            drawV11();if(touchTestMode)drawTouchTestOverlay();c.restore();postInvalidateDelayed(1000); // 1 FPS for clock seconds; no 30/60 FPS continuous scene animation
         }
         @Override public boolean onTouchEvent(MotionEvent e){
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();
             int a=e.getAction();
+            if(touchTestMode){
+                if(a==MotionEvent.ACTION_DOWN){testX=x;testY=y;testCount++;testLabel=testRegion(x,y);dashboard.invalidate();return true;}
+                if(a==MotionEvent.ACTION_UP){
+                    if(testX>690&&testY<65&&e.getEventTime()-e.getDownTime()>=1800){touchTestMode=false;testLabel="Exited";}
+                    else {testX=x;testY=y;testLabel=testRegion(x,y);}
+                    dashboard.invalidate();return true;
+                }
+                if(a==MotionEvent.ACTION_MOVE||a==MotionEvent.ACTION_CANCEL)return true;
+                return true;
+            }
             if(a==MotionEvent.ACTION_DOWN){
                 if(y>=357&&y<=465&&x>=90&&x<797){
                     pressedDock=masterDockIndex(x);dockLongPressed=false;
@@ -1110,7 +991,7 @@ public class MainActivity extends Activity {
                     pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
                     dockHandler.postDelayed(pendingDockLongPress,650);return true;
                 }
-                if(y>=316&&y<=332&&x>=221&&x<=506&&localPlayer!=null){draggingSeek=true;seekMusic(x);return true;}
+                if(y>=(appearance==1?322:316)&&y<=(appearance==1?339:332)&&x>=(appearance==1?255:221)&&x<=(appearance==1?480:506)&&localPlayer!=null){draggingSeek=true;seekMusic(x);return true;}
                 return true;
             }
             if(a==MotionEvent.ACTION_CANCEL){

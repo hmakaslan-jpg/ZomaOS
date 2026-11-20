@@ -121,7 +121,23 @@ public class MainActivity extends Activity {
     final Handler ui=new Handler();
     final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);startMusicDiscovery();try{restoreUsbFolder();}catch(Throwable err){android.util.Log.e("ZomaOS","USB restore failed during launcher startup",err);}resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
+    // Make the activity occupy the entire head-unit display on Android 4.1+.
+    // The dashboard continues to use the same 800x480 touch coordinate system.
+    void applyEdgeToEdge(){
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                             WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        View decor=getWindow().getDecorView();
+        int flags=View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                  |View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                  |View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        if(Build.VERSION.SDK_INT>=19){flags|=4096; /* IMMERSIVE_STICKY */}
+        decor.setSystemUiVisibility(flags);
+    }
+    @Override public void onWindowFocusChanged(boolean hasFocus){
+        super.onWindowFocusChanged(hasFocus);
+        if(hasFocus)applyEdgeToEdge();
+    }
+    @Override public void onCreate(Bundle b){super.onCreate(b);applyEdgeToEdge();centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);startMusicDiscovery();try{restoreUsbFolder();}catch(Throwable err){android.util.Log.e("ZomaOS","USB restore failed during launcher startup",err);}resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
     // Load only the selected scene and eight small themed assets. No GIF or frame loop.
     void recycleN14(Bitmap b){if(b!=null&&!b.isRecycled())b.recycle();}
     void loadN14Skin(){
@@ -551,8 +567,8 @@ public class MainActivity extends Activity {
         try{
             int duration=localPlayer.getDuration();
             if(duration>0){
-                float seekLeft=appearance==1?255f:221f;
-                float seekRight=appearance==1?480f:506f;
+                float seekLeft=appearance==1?203f:186f;
+                float seekRight=appearance==1?483f:498f;
                 float fraction=Math.max(0f,Math.min(1f,(x-seekLeft)/(seekRight-seekLeft)));
                 localPlayer.seekTo((int)(duration*fraction));
                 dashboard.invalidate();
@@ -846,7 +862,9 @@ public class MainActivity extends Activity {
         void n14Image(Bitmap b,float l,float t,float r,float bottom){
             if(b==null)return;
             p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);p.setColor(Color.WHITE);
-            c.drawBitmap(b,null,new RectF(l,t,r,bottom),p);
+            int cropX=4, cropTop=8;
+            Rect source=new Rect(cropX,cropTop,b.getWidth()-cropX,b.getHeight());
+            c.drawBitmap(b,source,new RectF(l,t,r,bottom),p);
         }
         void n14ClockHands(float cx,float cy,int edge){
             Calendar now=Calendar.getInstance();
@@ -896,91 +914,73 @@ public class MainActivity extends Activity {
 
         // V15.3: cover baked media labels with a live player panel.
         // Theme art remains full resolution; only the media region is redrawn.
+        // V15.5: geometry follows the 800x480 artwork, not the previous V15.3 mockup.
+        // The master images already contain a clean numbered clock face.
         void drawMasterV15(){
             boolean day=appearance==1;
             int accent=appearance==2?col("#FF435A"):day?col("#1679C4"):col("#2BDBFF");
             int fg=day?col("#172A40"):Color.WHITE;
             int muted=day?col("#456178"):col("#AEC6D8");
             n14Image(masterArtwork,0,0,800,480);
-            // Fuel and coolant gauges in the source artwork are not connected to vehicle sensors.
-            // Keep the original artwork intact until a redesigned master is supplied.
-            float cx=appearance==2?209:211,cy=appearance==2?215:190;
+            // Clock is centered at (233,148) on all three V15.4 backgrounds.
+            float cx=233f,cy=148f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
-            // V15.3 Daylight redesign: clean dial has no baked hands; draw live hands.
             if(carbonClock){
-                // Night masters contain frozen hands; mask the dial interior before drawing live ones.
-                if(!day){
-                    fill(appearance==2?col("#10131C"):col("#091625"));c.drawCircle(cx,cy,85,p);
-                    // Restore visible dial ticks and numerals after covering frozen artwork hands.
-                    for(int h=1;h<=12;h++){
-                        double a=h*Math.PI/6-Math.PI/2;
-                        float nx=cx+(float)Math.cos(a)*66,ny=cy+(float)Math.sin(a)*66;
-                        centerText(String.valueOf(h),nx,ny+5,14,Color.WHITE,true);
-                    }
-                }
-                int handColor=day?col("#173A5A"):Color.WHITE;
-                hand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),45,4,handColor);
-                hand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),63,3,handColor);
-                hand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),72,1,accent);
+                // Do NOT repaint the clock dial or its printed numerals.
+                int handColor=day?col("#E5F4FF"):Color.WHITE;
+                hand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),40,4,handColor);
+                hand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),59,3,handColor);
+                hand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),71,1,accent);
                 fill(handColor);c.drawCircle(cx,cy,4,p);
-            }
-            // The master art contains a decorative clock face AND baked hands.
-            // Avoid rendering a second pair of hands over them. The live digital
-            // time is presented in the header until a hands-free dial is supplied.
-            // This prevents the severe doubled-hand visual defect.
-            if(!carbonClock){
-                fill(day?col("#F1F6FB"):col("#111827"));
-                c.drawCircle(cx,cy,53,p);
-                centerText(speed>=0&&!simulated?String.valueOf(speed):"--",cx,cy+10,33,fg,true);
-                centerText("km/h",cx,cy+29,11,fg,false);
-            }
-            // Replace the stale time/date/version printed in the artwork with
-            // a small readable, genuinely live header.
-            // Unified status header across all themes; no large version badge.
-            box(350,2,798,45,day?col("#E9F2F8"):col("#0D192B"));
-            text("ZomaOS",366,28,16,accent,true);
-            text("Wi-Fi",500,27,12,muted,false);
-            text("BT",552,27,12,muted,false);
-            fitCenteredText(clockText(),742,29,19,108,fg,true);
-            // The background contains decorative pre-rendered labels; paint a single
-            // clean opaque player over them so live metadata never overlaps fake text.
-            box(day?180:130,day?277:260,767,350,day?col("#F0F6FC"):col("#101C2B"));
-            if(day){line(181,349,766,349,col("#8DAFC6"),2);}
-            fill(accent);c.drawRoundRect(new RectF(day?181:133,day?278:263,764,day?280:266),2,2,p);
-            if(albumArt!=null&&!albumArt.isRecycled()){
-                fill(Color.WHITE);c.drawBitmap(albumArt,null,new RectF(day?188:142,day?284:271,day?246:208,day?342:337),p);
             }else{
-                box(day?188:142,day?284:271,day?246:208,day?342:337,day?col("#D8E5EF"):col("#23394E"));
-                centerText("♫",day?217:175,day?322:316,30,accent,true);
+                fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
+                centerText(speed>=0&&!simulated?String.valueOf(speed):"--",cx,cy+10,33,Color.WHITE,true);
+                centerText("km/h",cx,cy+29,11,Color.WHITE,false);
+            }
+            // Minimal translucent status text; no opaque rectangular header over the SUV.
+            fill(day?Color.argb(135,245,250,255):Color.argb(130,4,13,24));
+            c.drawRoundRect(new RectF(410,5,791,32),8,8,p);
+            text("ZomaOS",422,24,13,accent,true);
+            text("Wi-Fi",542,23,11,muted,false);
+            text("BT",590,23,11,muted,false);
+            fitCenteredText(clockText(),728,24,16,117,fg,true);
+            // Player fits WITHIN the artwork's horizontal media frame (y=300..368).
+            // Do not cover its illuminated border, especially on Pearl Day.
+            float pl=day?150:133,pr=day?744:753,pt=310,pb=358;
+            fill(day?Color.argb(228,239,247,253):Color.argb(222,12,24,39));
+            c.drawRoundRect(new RectF(pl,pt,pr,pb),7,7,p);
+            float artX=pl+5;
+            if(albumArt!=null&&!albumArt.isRecycled()){
+                fill(Color.WHITE);c.drawBitmap(albumArt,null,new RectF(artX,314,artX+40,354),p);
+            }else{
+                fill(day?col("#D8E5EF"):col("#23394E"));c.drawRoundRect(new RectF(artX,314,artX+40,354),3,3,p);
+                centerText("♫",artX+20,342,23,accent,true);
             }
             String title=(usbMode||localMode)?trackTitle:"Choose USB music";
             String artist=(usbMode||localMode)?trackArtist:"USB MUSIC";
             if(title==null||title.length()==0)title="Choose USB music";
             if(artist==null)artist="";
-            // Ellipsize instead of shrinking a long filename into unreadable text.
-            fill(fg);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));p.setTextSize(14);
-            title=TextUtils.ellipsize(title,new android.text.TextPaint(p),day?225:294,TextUtils.TruncateAt.END).toString();
-            text(title,day?255:220,day?298:287,14,fg,true);
-            fill(muted);p.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));p.setTextSize(11);
-            artist=TextUtils.ellipsize(artist,new android.text.TextPaint(p),day?225:294,TextUtils.TruncateAt.END).toString();
-            text(artist,day?255:220,day?316:306,11,muted,false);
-            // Actual MediaPlayer position, not a painted progress marker.
-            float left=day?255:221,right=day?480:506,top=day?328:321;
+            float tx=artX+48, barRight=day?483:498;
+            fill(fg);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));p.setTextSize(12);
+            title=TextUtils.ellipsize(title,new android.text.TextPaint(p),barRight-tx,TextUtils.TruncateAt.END).toString();
+            text(title,tx,326,12,fg,true);
+            fill(muted);p.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));p.setTextSize(10);
+            artist=TextUtils.ellipsize(artist,new android.text.TextPaint(p),barRight-tx,TextUtils.TruncateAt.END).toString();
+            text(artist,tx,338,10,muted,false);
+            float left=tx,right=barRight,top=346;
             fill(day?col("#B9CDD9"):col("#36506B"));
-            c.drawRoundRect(new RectF(left,top,right,top+5),3,3,p);
+            c.drawRoundRect(new RectF(left,top,right,top+3),2,2,p);
             if(localPlayer!=null){try{
                 int duration=localPlayer.getDuration(),position=localPlayer.getCurrentPosition();
                 if(duration>0){float f=Math.max(0f,Math.min(1f,position/(float)duration));
-                    fill(accent);c.drawRoundRect(new RectF(left,top,left+(right-left)*f,top+5),3,3,p);
-                    fill(fg);c.drawCircle(left+(right-left)*f,top+2.5f,4,p);
-                    text(String.format(Locale.ENGLISH,"%d:%02d",position/60000,(position/1000)%60),day?255:221,342,10,muted,false);
-                    text(String.format(Locale.ENGLISH,"%d:%02d",duration/60000,(duration/1000)%60),472,342,10,muted,false);
+                    fill(accent);c.drawRoundRect(new RectF(left,top,left+(right-left)*f,top+3),2,2,p);
+                    fill(fg);c.drawCircle(left+(right-left)*f,top+1.5f,3,p);
                 }
             }catch(Exception ignored){}}
-            centerText("|◀",550,313,22,fg,true);
-            centerText(localPlayer!=null&&localPlayer.isPlaying()?"Ⅱ":"▶",624,314,26,accent,true);
-            centerText("▶|",700,313,22,fg,true);
+            centerText("|◀",548,340,21,fg,true);
+            centerText(localPlayer!=null&&localPlayer.isPlaying()?"Ⅱ":"▶",622,340,24,accent,true);
+            centerText("▶|",697,340,21,fg,true);
         }
 
         void drawApproved(){drawMasterV15();}
@@ -988,10 +988,10 @@ public class MainActivity extends Activity {
         String testRegion(float x,float y){
             if(x>=90&&x<797&&y>=357&&y<=465){int i=masterDockIndex(x);return "DOCK: "+(i>=0&&i<5?dockLabel(i):"Outside dock");}
             if(x<107&&y>=65&&y<354){if(y<125)return "LEFT: Home";if(y<183)return "LEFT: Navigation";if(y<240)return "LEFT: Music";if(y<298)return "LEFT: Phone";return "LEFT: Settings";}
-            if(y>=(appearance==1?322:316)&&y<=(appearance==1?339:332)&&x>=(appearance==1?255:221)&&x<=(appearance==1?480:506))return "MUSIC: Seek bar (USB)";
-            if(y>=276&&y<=347&&x>=518&&x<=738)return x<588?"MUSIC: Previous":x<665?"MUSIC: Play/Pause":"MUSIC: Next";
-            if(y>=58&&y<=260&&x>=116&&x<=336)return "CLOCK / GAUGE";
-            if(y>=270&&y<=349&&x>=130&&x<214)return "MUSIC: Track list";
+            if(y>=341&&y<=355&&x>=(appearance==1?203:186)&&x<=(appearance==1?483:498))return "MUSIC: Seek bar (USB)";
+            if(y>=310&&y<=359&&x>=515&&x<=738)return x<588?"MUSIC: Previous":x<665?"MUSIC: Play/Pause":"MUSIC: Next";
+            if(y>=28&&y<=285&&x>=105&&x<=357)return "CLOCK / GAUGE";
+            if(y>=310&&y<=359&&x>=130&&x<200)return "MUSIC: Track list";
             if(y<65)return "HEADER: Display only";
             return "NO ACTION (empty area)";
         }
@@ -1025,7 +1025,7 @@ public class MainActivity extends Activity {
                     pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
                     dockHandler.postDelayed(pendingDockLongPress,650);return true;
                 }
-                if(y>=(appearance==1?322:316)&&y<=(appearance==1?339:332)&&x>=(appearance==1?255:221)&&x<=(appearance==1?480:506)&&localPlayer!=null){draggingSeek=true;seekMusic(x);return true;}
+                if(y>=341&&y<=355&&x>=(appearance==1?203:186)&&x<=(appearance==1?483:498)&&localPlayer!=null){draggingSeek=true;seekMusic(x);return true;}
                 return true;
             }
             if(a==MotionEvent.ACTION_CANCEL){
@@ -1055,14 +1055,14 @@ public class MainActivity extends Activity {
                 showZomaSettings();return true;
             }
             // Media controls are inside the live 130..767 x 260..350 panel.
-            if(y>=276&&y<=347&&x>=518&&x<=738){
+            if(y>=310&&y<=359&&x>=515&&x<=738){
                 if(x<588){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}
                 else if(x<665)togglePlayback();
                 else {if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}
                 return true;
             }
-            if(y>=58&&y<=260&&x>=116&&x<=336){chooseCarbonGauge();return true;}
-            if(y>=270&&y<=349&&x>=130&&x<214){if(usbMode)showUsbTracks();else openRememberedUsb();return true;}
+            if(y>=28&&y<=285&&x>=105&&x<=357){chooseCarbonGauge();return true;}
+            if(y>=310&&y<=359&&x>=130&&x<200){if(usbMode)showUsbTracks();else openRememberedUsb();return true;}
             // Do not open Settings from the decorative top status/header area.
             return true;
         }

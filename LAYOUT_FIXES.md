@@ -1,0 +1,1 @@
+V15.5 UI alignment patch based on 3 on-device photographs. Clock center (233,148), player inside frame y310-358, compact translucent header, media hit targets realigned. USB discovery/playback code unchanged. Not runtime-tested on OEM hardware. Screen edge issue may originate from display overscan; not proven solved.

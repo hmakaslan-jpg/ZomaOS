@@ -150,8 +150,19 @@ public class MainActivity extends Activity {
     void loadN14Skin(){
         // V15.3 renders the selected 800x480 master only. Legacy V14 scene assets are not loaded.
         recycleN14(masterArtwork);
-        int masterId=appearance==5?R.drawable.master_pearl_luxury:appearance==4?R.drawable.master_pearl_digital:appearance==3?R.drawable.master_night_pro:appearance==2?R.drawable.master_carbon:appearance==1?R.drawable.master_pearl:R.drawable.master_electric;
-        masterArtwork=BitmapFactory.decodeResource(getResources(),masterId);
+        // Theme JPGs are packaged as assets, avoiding generated R.drawable symbol mismatches.
+        String[] names={"master_electric.jpg","master_pearl.jpg","master_carbon.jpg",
+                        "master_night_pro.jpg","master_pearl_digital.jpg","master_pearl_luxury.jpg"};
+        java.io.InputStream imageStream=null;
+        masterArtwork=null;
+        try{
+            imageStream=getAssets().open("themes/"+names[appearance]);
+            masterArtwork=BitmapFactory.decodeStream(imageStream);
+        }catch(java.io.IOException error){
+            android.util.Log.e("ZomaOS","Theme image missing: "+names[appearance],error);
+        }finally{
+            if(imageStream!=null)try{imageStream.close();}catch(java.io.IOException ignored){}
+        }
     }
     // One shared display-mode preference, independent of the selected appearance.
     // Speed is displayed only when live OBD data is available; otherwise "--".

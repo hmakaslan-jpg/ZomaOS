@@ -1,0 +1,1 @@
+Daylight rebuilt with a clean 800x480 daylight theme image, hands-free clock face, live analog clock hands, and adjusted music layout. Other themes remain unchanged. Source static validation only; APK build and hardware testing pending.

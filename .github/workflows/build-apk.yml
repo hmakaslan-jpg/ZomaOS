@@ -1,23 +1,43 @@
+
 name: Build ZomaOS APK
+
 on:
   workflow_dispatch:
   push:
     branches: [main, master]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
+
+      - name: Remove legacy images
+        run: |
+          cd app/src/main/res/drawable-nodpi
+          rm -f concept_v73.png
+          rm -f v11_exact_pearl.png
+          rm -f v11_exact_twilight.png
+          rm -f v11_exact_electric.png
+          rm -f master_carbon.png
+          rm -f master_electric.png
+          rm -f master_pearl.png
+          echo "Legacy images removed"
+
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
+
       - uses: actions/upload-artifact@v4
         with:
-          name: ZomaOS-V1-debug-APK
+          name: ZomaOS-V15.2-Lite-Premium
           path: app/build/outputs/apk/debug/app-debug.apk
+

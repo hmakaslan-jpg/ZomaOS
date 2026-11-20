@@ -1076,8 +1076,8 @@ public class MainActivity extends Activity {
             if(draggingSeek){draggingSeek=false;seekMusic(x);return true;}
             // Header quick links open the actual system controls (not decorative labels).
             if(y>=0&&y<=40){
-                if(x>=525&&x<580){try{startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS));}catch(Throwable e){launch(new String[]{},"settings");}return true;}
-                if(x>=580&&x<640){try{startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS));}catch(Throwable e){launch(new String[]{},"settings");}return true;}
+                if(x>=525&&x<580){try{startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS));}catch(Throwable settingsError){launch(new String[]{},"settings");}return true;}
+                if(x>=580&&x<640){try{startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS));}catch(Throwable settingsError){launch(new String[]{},"settings");}return true;}
             }
             // A compact Apps hotspot occupies the lower portion of the folder tile.
             // Five visible left-side icons: Home, Navigation, Music, Phone, Settings.

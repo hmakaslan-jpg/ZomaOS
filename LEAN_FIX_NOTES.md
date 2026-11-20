@@ -1,0 +1,1 @@
+V15.2 Lean Fix: Removed unused drawable assets from source. GitHub Actions also removes unused image assets left in repository from prior uploads before Gradle build. Existing Java logic unchanged. No device runtime test or new APK build performed.

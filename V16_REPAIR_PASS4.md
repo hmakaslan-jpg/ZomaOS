@@ -1,0 +1,1 @@
+V16 Repair Pass 4: Removed dormant Touch Test Mode fields, testRegion method, overlay rendering and touch interception branch. Updated app versionName to 16.0-repair-pass4-clean. Static checks only; Gradle build and device tests pending.

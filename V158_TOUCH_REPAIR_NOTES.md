@@ -1,0 +1,1 @@
+V15.8 focused touch patch based on original V15.8 source. Removed dormant touch-test overlay code. Dock tap uses 24 logical px movement tolerance and requires a matching ACTION_DOWN; long press retained. Other hotspots use ACTION_DOWN coordinates. No UI theme changes. Static checks only; Gradle/device tests pending.

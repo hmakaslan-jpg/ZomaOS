@@ -65,15 +65,29 @@ public class MainActivity extends Activity {
     }
     void activateDock(int index){
         String pkg=getPreferences(MODE_PRIVATE).getString("dock_pkg_"+index,"");
+        if(index==2){openAndroidAuto();return;}
         if(pkg.length()>0){Intent intent=getPackageManager().getLaunchIntentForPackage(pkg);
             if(intent!=null){stopAudio();startActivity(intent);return;}
             toast("App unavailable. Restore shortcut in long press.");return;
         }
         if(index==0)openRememberedUsb();
         else if(index==1)openRadio();
-        else if(index==2){stopAudio();launch(new String[]{"me.ri3d.openauto"},"");}
+        else if(index==2)openAndroidAuto();
         else if(index==3)showMode();
         else if(index==4)openFileBrowser();
+    }
+    // Single Android Auto entry point for dock and entertainment hub.
+    void openAndroidAuto(){
+        String[] packages={"gb.xxy.hr","com.google.android.projection.gearhead","me.ri3d.openauto"};
+        String saved=getPreferences(MODE_PRIVATE).getString("androidAutoComponent","");
+        if(saved.length()>0){try{Intent i=new Intent(Intent.ACTION_MAIN);i.setComponent(ComponentName.unflattenFromString(saved));startActivity(i);return;}catch(Throwable e){android.util.Log.w("ZomaOS","Saved Android Auto shortcut unavailable",e);}}
+        for(String pkg:packages){
+            try{Intent intent=getPackageManager().getLaunchIntentForPackage(pkg);
+                if(intent!=null){stopAudio();startActivity(intent);return;}}
+            catch(Throwable err){android.util.Log.w("ZomaOS","Auto launch failed: "+pkg,err);}
+        }
+        // OEM and Headunit Reloaded package IDs vary; let the user choose the working app.
+        chooseFactoryApp("androidAutoComponent","Android Auto / Headunit Reloaded");
     }
     void openFileBrowser(){
         launch(new String[]{"com.estrongs.android.pop","com.android.documentsui","com.speedsoftware.rootexplorer","com.ghisler.android.TotalCommander"},"");
@@ -107,7 +121,7 @@ public class MainActivity extends Activity {
     final Handler ui=new Handler();
     final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);startMusicDiscovery();restoreUsbFolder();resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);startMusicDiscovery();try{restoreUsbFolder();}catch(Throwable err){android.util.Log.e("ZomaOS","USB restore failed during launcher startup",err);}resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
     // Load only the selected scene and eight small themed assets. No GIF or frame loop.
     void recycleN14(Bitmap b){if(b!=null&&!b.isRecycled())b.recycle();}
     void loadN14Skin(){
@@ -301,7 +315,7 @@ public class MainActivity extends Activity {
     boolean audioFile(File f){String n=f.getName().toLowerCase(Locale.US);return n.endsWith(".mp3")||n.endsWith(".wav")||n.endsWith(".ogg")||n.endsWith(".m4a")||n.endsWith(".aac")||n.endsWith(".flac");}
     void collectMusic(File folder,int depth,int limit){
         if(depth>9||usbTracks.size()>=limit||folder==null||!folder.canRead())return;
-        File[] files=folder.listFiles();if(files==null)return;
+        File[] files;try{files=folder.listFiles();}catch(Throwable err){android.util.Log.w("ZomaOS","Unreadable USB folder: "+folder,err);return;}if(files==null)return;
         Arrays.sort(files,new Comparator<File>(){public int compare(File a,File b){return a.getName().compareToIgnoreCase(b.getName());}});
         for(File f:files){if(usbTracks.size()>=limit)break;if(f.isDirectory())collectMusic(f,depth+1,limit);else if(audioFile(f))usbTracks.add(f);}
     }
@@ -385,9 +399,10 @@ public class MainActivity extends Activity {
         if(dashboard!=null)dashboard.invalidate();
     }
     void openRememberedUsb(){
-        if(!usbTracks.isEmpty()){showUsbTracks();return;}
-        restoreUsbFolder();
-        if(!usbTracks.isEmpty())showUsbTracks();else chooseUsbRoot();
+        // Always offer a folder picker: a previously remembered folder may be stale.
+        try{restoreUsbFolder();if(!usbTracks.isEmpty())showUsbTracks();else chooseUsbRoot();}
+        catch(Throwable err){android.util.Log.e("ZomaOS","USB browser error",err);toast("USB browser unavailable; select a folder");try{chooseUsbRoot();}catch(Throwable ignored){}}
+
     }
     void chooseUsbRoot(){
         LinkedHashSet<String> paths=new LinkedHashSet<String>();
@@ -399,8 +414,10 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("Choose USB / storage folder").setItems(options,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){browseFolder(new File(options[n]));}}).setNegativeButton("Cancel",null).show();
     }
     void browseFolder(final File folder){
-        File[] entries=folder.listFiles();if(entries==null){toast("Cannot access folder");return;}
-        final ArrayList<File> children=new ArrayList<File>();for(File f:entries){if(f.isDirectory()||audioFile(f))children.add(f);}
+        File[] entries;
+        try{entries=folder.listFiles();}catch(Throwable err){android.util.Log.e("ZomaOS","Cannot list USB folder",err);toast("Cannot access USB folder");return;}
+        if(entries==null){toast("Cannot access folder");return;}
+        final ArrayList<File> children=new ArrayList<File>();for(File f:entries){try{if(f.isDirectory()||audioFile(f))children.add(f);}catch(SecurityException ignored){}}
         Collections.sort(children,new Comparator<File>(){public int compare(File a,File b){if(a.isDirectory()!=b.isDirectory())return a.isDirectory()?-1:1;return a.getName().compareToIgnoreCase(b.getName());}});
         final Dialog dialog=new Dialog(this);dialog.setTitle("USB FILES • "+folder.getName());
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(12,8,12,8);panel.setBackgroundColor(Color.rgb(16,39,59));
@@ -415,7 +432,8 @@ public class MainActivity extends Activity {
         roots.setOnClickListener(new View.OnClickListener(){public void onClick(View v){dialog.dismiss();chooseUsbRoot();}});
         play.setOnClickListener(new View.OnClickListener(){public void onClick(View v){dialog.dismiss();rememberUsbFolder(folder);usbTracks.clear();collectMusic(folder,0,2000);if(!usbTracks.isEmpty())playUsb(0);else toast("No supported audio found");}});
         list.setOnItemClickListener(new AdapterView.OnItemClickListener(){public void onItemClick(AdapterView<?> p,View v,int n,long id){File f=children.get(n);dialog.dismiss();if(f.isDirectory())browseFolder(f);else{rememberUsbFolder(folder);usbTracks.clear();collectMusic(folder,0,2000);int pos=usbTracks.indexOf(f);playUsb(pos<0?0:pos);}}});
-        dialog.setContentView(panel);dialog.show();dialog.getWindow().setLayout(-1,-1);
+        try{dialog.show();dialog.setContentView(panel);if(dialog.getWindow()!=null)dialog.getWindow().setLayout(-1,-1);}
+        catch(Throwable err){android.util.Log.e("ZomaOS","USB file picker failed",err);toast("Unable to display USB files");}
     }
     void loadLocalLibrary(){
         localTitles.clear();localArtists.clear();localIds.clear();
@@ -458,7 +476,7 @@ public class MainActivity extends Activity {
     void musicHub(){
         final String[] choices={"USB MUSIC - browse flash drive", "ZOMA MUSIC - indexed library", "BLUETOOTH MUSIC - factory player", "GEELY MUSIC - original player", "FM RADIO - original tuner", "ANDROID AUTO - OpenAuto", "BLUETOOTH / PHONE settings"};
         new AlertDialog.Builder(this).setTitle("ZomaOS Entertainment Hub").setItems(choices,new DialogInterface.OnClickListener(){
-            public void onClick(DialogInterface d,int n){if(n==0)openRememberedUsb();else if(n==1)openLocalMusic();else if(n==2)openFactoryBluetooth();else if(n==3)openMusic();else if(n==4)openRadio();else if(n==5){stopAudio();launch(new String[]{"me.ri3d.openauto"},"");}else factoryBluetoothOptions();}
+            public void onClick(DialogInterface d,int n){if(n==0)openRememberedUsb();else if(n==1)openLocalMusic();else if(n==2)openFactoryBluetooth();else if(n==3)openMusic();else if(n==4)openRadio();else if(n==5)openAndroidAuto();else factoryBluetoothOptions();}
         }).setNegativeButton("Close",null).show();
     }
     // Best-effort media keys. Steering wheel may be routed privately by the factory MCU.
@@ -884,15 +902,28 @@ public class MainActivity extends Activity {
             int fg=day?col("#172A40"):Color.WHITE;
             int muted=day?col("#456178"):col("#AEC6D8");
             n14Image(masterArtwork,0,0,800,480);
-            float cx=day?217:228,cy=day?162:154;
+            // Fuel and coolant gauges in the source artwork are not connected to vehicle sensors.
+            // Keep the original artwork intact until a redesigned master is supplied.
+            float cx=appearance==2?209:211,cy=appearance==2?215:190;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             // V15.3 Daylight redesign: clean dial has no baked hands; draw live hands.
-            if(day && carbonClock){
-                hand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),45,4,col("#173A5A"));
-                hand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),63,3,col("#173A5A"));
-                hand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),72,1,col("#178BE1"));
-                fill(col("#173A5A"));c.drawCircle(cx,cy,4,p);
+            if(carbonClock){
+                // Night masters contain frozen hands; mask the dial interior before drawing live ones.
+                if(!day){
+                    fill(appearance==2?col("#10131C"):col("#091625"));c.drawCircle(cx,cy,85,p);
+                    // Restore visible dial ticks and numerals after covering frozen artwork hands.
+                    for(int h=1;h<=12;h++){
+                        double a=h*Math.PI/6-Math.PI/2;
+                        float nx=cx+(float)Math.cos(a)*66,ny=cy+(float)Math.sin(a)*66;
+                        centerText(String.valueOf(h),nx,ny+5,14,Color.WHITE,true);
+                    }
+                }
+                int handColor=day?col("#173A5A"):Color.WHITE;
+                hand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),45,4,handColor);
+                hand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),63,3,handColor);
+                hand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),72,1,accent);
+                fill(handColor);c.drawCircle(cx,cy,4,p);
             }
             // The master art contains a decorative clock face AND baked hands.
             // Avoid rendering a second pair of hands over them. The live digital
@@ -906,9 +937,12 @@ public class MainActivity extends Activity {
             }
             // Replace the stale time/date/version printed in the artwork with
             // a small readable, genuinely live header.
-            box(360,2,796,45,day?col("#E9F2F8"):col("#0D192B"));
-            text("ZomaOS V15.3",374,29,17,accent,true);
-            fitCenteredText(clockText(),745,29,20,95,fg,true);
+            // Unified status header across all themes; no large version badge.
+            box(350,2,798,45,day?col("#E9F2F8"):col("#0D192B"));
+            text("ZomaOS",366,28,16,accent,true);
+            text("Wi-Fi",500,27,12,muted,false);
+            text("BT",552,27,12,muted,false);
+            fitCenteredText(clockText(),742,29,19,108,fg,true);
             // The background contains decorative pre-rendered labels; paint a single
             // clean opaque player over them so live metadata never overlaps fake text.
             box(day?180:130,day?277:260,767,350,day?col("#F0F6FC"):col("#101C2B"));
@@ -1015,7 +1049,7 @@ public class MainActivity extends Activity {
             // Do not reuse the seven-item V14 hit grid on the V15 artwork.
             if(x<107&&y>=65&&y<354){
                 if(y<125)return true; // Home: stay on launcher
-                if(y<183){openMaps();return true;}
+                if(y<183){openAndroidAuto();return true;}
                 if(y<240){musicHub();return true;}
                 if(y<298){openFactoryPhone();return true;}
                 showZomaSettings();return true;

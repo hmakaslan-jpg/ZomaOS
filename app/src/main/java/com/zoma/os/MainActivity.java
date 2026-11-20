@@ -1066,6 +1066,34 @@ public class MainActivity extends Activity {
                 centerText(i==0?"MUSIC":i==1?"RADIO":i==2?"AUTO":i==3?"OBD":i==4?"FILES":"APPS",center,450,11,ink,true);
             }
         }
+        // Overlay six clearly labeled live buttons; no full-width opaque dock mask.
+        // Their positions match dockEdges and onTouchEvent exactly.
+        void drawNewThemeDock(int accent){
+            String[] names={"MUSIC","RADIO","AUTO","OBD","FILES","APPS"};
+            for(int i=0;i<6;i++){
+                float l=dockEdges[i]+3f,r=dockEdges[i+1]-4f,cx=(l+r)*.5f;
+                fill(Color.argb(208,4,19,38));
+                c.drawRoundRect(new RectF(l,382,r,462),10,10,p);
+                p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(i==5?3.5f:2.2f);
+                p.setColor(i==5?Color.WHITE:accent);
+                c.drawRoundRect(new RectF(l+1,383,r-1,461),10,10,p);
+                p.setStyle(Paint.Style.FILL);
+                if(i==5){
+                    fill(accent);
+                    for(int row=0;row<2;row++)for(int col=0;col<2;col++)
+                        c.drawRoundRect(new RectF(cx-18+col*21,397+row*19,cx-4+col*21,411+row*19),3,3,p);
+                }else if(i==4){
+                    p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(3);p.setColor(Color.WHITE);
+                    c.drawRoundRect(new RectF(cx-20,406,cx+20,431),4,4,p);
+                    c.drawLine(cx-17,406,cx-6,398,p);c.drawLine(cx-6,398,cx+6,398,p);
+                    p.setStyle(Paint.Style.FILL);
+                }else if(i==0){centerText("♫",cx,429,29,accent,true);
+                }else if(i==1){centerText("◉",cx,429,29,accent,true);
+                }else if(i==2){centerText("▶",cx,429,28,accent,true);
+                }else {centerText("OBD",cx,426,18,accent,true);}
+                centerText(names[i],cx,450,i==5?13:11,Color.WHITE,true);
+            }
+        }
         // V16: three additional selectable scenes. Controls and hit regions are real,
         // while visual scenes are static mockup-derived art. No fake live telemetry.
         void drawNewTheme(){
@@ -1080,9 +1108,9 @@ public class MainActivity extends Activity {
             centerText(new SimpleDateFormat("EEE, dd MMM yyyy",Locale.ENGLISH).format(new Date()),405,65,11,Color.WHITE,false);
             // User may switch the gauge region to a real analog clock.
             // Speedometer shows -- without real connected OBD readings.
-            float cx=appearance==5?630:appearance==4?115:112;
-            float cy=appearance==5?160:appearance==4?162:167;
-            float radius=appearance==5?103:appearance==4?93:80;
+            float cx=appearance==5?630:appearance==4?108:112;
+            float cy=appearance==5?160:appearance==4?151:167;
+            float radius=appearance==5?103:appearance==4?92:80;
             fill(day?Color.argb(245,10,38,66):Color.argb(246,4,16,33));c.drawCircle(cx,cy,radius,p);
             p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(3);p.setColor(accent);c.drawCircle(cx,cy,radius-2,p);p.setStyle(Paint.Style.FILL);
             if(carbonClock){
@@ -1096,11 +1124,20 @@ public class MainActivity extends Activity {
                 centerText(speed>=0&&!simulated?String.valueOf(speed):"--",cx,cy+10,34,Color.WHITE,true);
                 centerText("km/h",cx,cy+29,12,Color.WHITE,false);
             }
+            if(appearance==4){
+                // Second dial displays date, never invented vehicle telemetry.
+                float x2=295,y2=151;
+                fill(Color.argb(235,4,20,39));c.drawCircle(x2,y2,90,p);
+                p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.5f);p.setColor(accent);
+                c.drawCircle(x2,y2,88,p);p.setStyle(Paint.Style.FILL);
+                centerText(new SimpleDateFormat("dd",Locale.ENGLISH).format(new Date()),x2,y2+8,39,Color.WHITE,true);
+                centerText(new SimpleDateFormat("MMMM",Locale.ENGLISH).format(new Date()).toUpperCase(Locale.ENGLISH),x2,y2+35,12,accent,true);
+            }
             // Dedicated music surface masks mockup's static song/timeline.
-            float left=appearance==3?565:appearance==4?205:60;
-            float right=appearance==3?790:appearance==4?595:555;
-            float top=appearance==3?110:appearance==4?265:280;
-            float bottom=appearance==3?280:appearance==4?351:361;
+            float left=appearance==3?565:appearance==4?485:60;
+            float right=appearance==3?790:appearance==4?790:555;
+            float top=appearance==3?110:appearance==4?247:280;
+            float bottom=appearance==3?280:appearance==4?362:361;
             fill(day?Color.argb(242,14,40,65):Color.argb(242,4,18,38));
             c.drawRoundRect(new RectF(left,top,right,bottom),10,10,p);
             text((usbMode||localMode)?trackTitle:"USB MUSIC",left+12,top+27,13,Color.WHITE,true);
@@ -1112,8 +1149,7 @@ public class MainActivity extends Activity {
             centerText(localPlayer!=null&&localPlayer.isPlaying()?"Ⅱ":"▶",left+(right-left)*.5f,bottom-12,22,accent,true);
             centerText("▶|",left+(right-left)*.73f,bottom-12,19,Color.WHITE,true);
             // Six aligned controls, drawn over the static mockup dock.
-            fill(day?col("#153B5B"):col("#071424"));c.drawRect(0,370,800,480,p);
-            drawSixTileDock(day,accent);
+            drawNewThemeDock(accent);
             // Accessible settings hotspot, regardless of mockup's decorative icons.
             fill(Color.argb(215,8,26,45));c.drawRoundRect(new RectF(754,8,797,49),8,8,p);
             centerText("⚙",775,37,25,Color.WHITE,true);
@@ -1173,10 +1209,10 @@ public class MainActivity extends Activity {
             }
             // Media controls are inside the live 130..767 x 260..350 panel.
             if(appearance>=3){
-                float l=appearance==3?565:appearance==4?205:60,r=appearance==3?790:appearance==4?595:555,t=appearance==3?110:appearance==4?265:280,b=appearance==3?280:appearance==4?351:361;
+                float l=appearance==3?565:appearance==4?485:60,r=appearance==3?790:appearance==4?790:555,t=appearance==3?110:appearance==4?247:280,b=appearance==3?280:appearance==4?362:361;
                 if(x>=l&&x<=r&&y>=b-35&&y<=b){float f=(x-l)/(r-l);if(f<.38f){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else resumeOrToggleUsbFromDock();}else if(f<.63f)togglePlayback();else{if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else resumeOrToggleUsbFromDock();}return true;}
                 if(x>=l&&x<=r&&y>=t&&y<b-35){resumeOrToggleUsbFromDock();return true;}
-                float gcx=appearance==5?630:appearance==4?115:112,gcy=appearance==5?160:appearance==4?162:167;
+                float gcx=appearance==5?630:appearance==4?108:112,gcy=appearance==5?160:appearance==4?151:167;
                 if(Math.abs(x-gcx)<105&&Math.abs(y-gcy)<105){chooseGaugeMode();return true;}
             }
             if(y>=310&&y<=359&&x>=515&&x<=738&&appearance<3){

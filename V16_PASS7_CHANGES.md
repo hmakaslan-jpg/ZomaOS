@@ -1,0 +1,1 @@
+Visual repair pass 7: regenerated Pearl Digital image without black collage strip; transparent six-button dock with clearly drawn Apps icon; aligned Pearl Digital twin dials, date and media panel; removed unreachable duplicate return. Build not executed.

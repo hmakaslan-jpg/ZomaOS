@@ -6,7 +6,7 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 62
-        versionName '16.0-build-fix-pass6'
+        versionCode 64
+        versionName '16.0-optimized-pass8'
     }
 }

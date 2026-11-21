@@ -18,7 +18,7 @@ jobs:
       - name: Remove baked OBD symbol from the three original theme images
         shell: bash
         run: |
-          python3 -m pip install --quiet Pillow
+          python3 -m pip install --quiet Pillow numpy
           python3 - <<'PYREPAIR'
           from PIL import Image, ImageFilter
           from pathlib import Path
@@ -31,18 +31,23 @@ jobs:
               dst=repaired.load()
               x0,x1,y0,y1=536,610,389,448
               if theme=='pearl':
-                  # Day's brushed-silver gradient needs broad, feathered edges.
-                  # Reconstruct its interior using intact rows immediately
-                  # above and below the former OBD graphic, not a flat patch.
-                  x0,x1,y0,y1=540,606,392,444
-                  for y in range(y0,y1):
-                      v=(y-y0)/float(y1-y0)
-                      for x in range(x0,x1):
-                          top=src[x,381]
-                          bottom=src[x,454]
-                          # Smoothly interpolate the original silver shading
-                          # while preserving its horizontal color variation.
-                          dst[x,y]=tuple(round(top[c]*(1-v)+bottom[c]*v) for c in range(3))
+                  # Reconstruct the silver gradient using intact surrounding pixels.
+                  import numpy as np
+                  arr=np.asarray(original,dtype=np.float32).copy()
+                  Y,X=np.mgrid[380:461,510:641]
+                  dx=(X-572)/60.0
+                  dy=(Y-421)/40.0
+                  rr=((X-570)/39.0)**2+((Y-418)/31.0)**2
+                  valid=(rr>1.25)&(X>517)&(X<628)&(Y>384)&(Y<453)
+                  features=np.stack([np.ones_like(dx),dx,dy,dx*dx,dy*dy,dx*dy,dx**3,dy**3,dx*dx*dy,dx*dy*dy],axis=-1)
+                  a=features[valid]
+                  coeff=np.stack([np.linalg.lstsq(a,arr[380:461,510:641,c][valid],rcond=None)[0] for c in range(3)],axis=-1)
+                  surface=np.einsum('ijk,kl->ijl',features,coeff)
+                  alpha=np.clip((1.25-rr)/0.35,0,1)
+                  alpha=alpha*alpha*(3-2*alpha)
+                  region=arr[380:461,510:641]
+                  region[:]=region*(1-alpha[...,None])+surface*alpha[...,None]
+                  result=Image.fromarray(np.uint8(np.clip(arr,0,255)),'RGB')
               else:
                   for y in range(y0,y1):
                       left=[sum(src[xx,y][c] for xx in range(525,533))/8 for c in range(3)]
@@ -50,11 +55,12 @@ jobs:
                       for x in range(x0,x1):
                           t=(x-x0)/(x1-x0)
                           dst[x,y]=tuple(round(left[c]*(1-t)+right[c]*t) for c in range(3))
-              mask=Image.new('L',original.size,0)
-              from PIL import ImageDraw
-              ImageDraw.Draw(mask).rectangle((x0,y0,x1-1,y1-1),fill=255)
-              mask=mask.filter(ImageFilter.GaussianBlur(11 if theme=='pearl' else 2.2))
-              result=Image.composite(repaired,original,mask)
+              if theme!='pearl':
+                  mask=Image.new('L',original.size,0)
+                  from PIL import ImageDraw
+                  ImageDraw.Draw(mask).rectangle((x0,y0,x1-1,y1-1),fill=255)
+                  mask=mask.filter(ImageFilter.GaussianBlur(11 if theme=='pearl' else 2.2))
+                  result=Image.composite(repaired,original,mask)
               result.save(path,quality=83,subsampling=2,optimize=True)
               print('Clean theme',theme,path.stat().st_size)
           PYREPAIR

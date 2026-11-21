@@ -462,14 +462,63 @@ public class MainActivity extends Activity {
         catch(Throwable err){android.util.Log.e("ZomaOS","USB browser error",err);toast("USB browser unavailable; select a folder");try{chooseUsbRoot();}catch(Throwable ignored){}}
 
     }
+    // Detect actual mounted USB folders rather than showing Android's generic roots.
+    // Some head units retain stale USBA mount directories after removal.
+    boolean hasUsbAudio(File dir,int depth){
+        if(depth<0||dir==null||!dir.isDirectory()||!dir.canRead())return false;
+        File[] files;try{files=dir.listFiles();}catch(Throwable t){return false;}
+        if(files==null)return false;
+        for(File f:files){if(f.isFile()&&audioFile(f))return true;}
+        if(depth>0)for(File f:files){if(f.isDirectory()&&hasUsbAudio(f,depth-1))return true;}
+        return false;
+    }
     void chooseUsbRoot(){
-        LinkedHashSet<String> paths=new LinkedHashSet<String>();
-        String[] roots={"/mnt/usb_storage","/mnt/usb","/mnt/udisk","/mnt/udisk1","/mnt/usbhost1","/mnt/usbhost2","/mnt/media_rw","/storage","/storage/usb0","/storage/usb1","/storage/udisk0","/storage/usbdisk","/mnt/sdcard","/sdcard","/mnt"};
-        for(String path:roots){File f=new File(path);if(f.exists()&&f.isDirectory()&&f.canRead())paths.add(f.getAbsolutePath());}
-        String env=System.getenv("SECONDARY_STORAGE");if(env!=null)for(String p:env.split(":")){File f=new File(p);if(f.isDirectory()&&f.canRead())paths.add(p);}
-        if(paths.isEmpty()){toast("No readable storage. Check USB mounting.");return;}
-        final String[] options=paths.toArray(new String[paths.size()]);
-        new AlertDialog.Builder(this).setTitle("Choose USB / storage folder").setItems(options,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){browseFolder(new File(options[n]));}}).setNegativeButton("Cancel",null).show();
+        LinkedHashMap<String,File> candidates=new LinkedHashMap<String,File>();
+        String[] bases={"/mnt/usb","/mnt/usb_storage","/mnt/udisk","/mnt/usbhost1","/mnt/usbhost2","/storage","/mnt/media_rw"};
+        for(String base:bases){
+            File root=new File(base);
+            if(!root.isDirectory()||!root.canRead())continue;
+            File[] children=root.listFiles();
+            if(children!=null)for(File child:children){
+                if(child.isDirectory()&&child.canRead()&&
+                   (child.getName().startsWith("USBA")||child.getName().startsWith("usb")||
+                    child.getName().startsWith("sd")||child.getName().matches("[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"))&&
+                    hasUsbAudio(child,3)){
+                    try{candidates.put(child.getCanonicalPath(),child);}catch(IOException ignored){}
+                }
+            }
+            if(hasUsbAudio(root,1)){
+                try{candidates.put(root.getCanonicalPath(),root);}catch(IOException ignored){}
+            }
+        }
+        // Prefer the deepest mount, not its parent directory.
+        ArrayList<File> mounts=new ArrayList<File>(candidates.values());
+        ArrayList<File> filtered=new ArrayList<File>();
+        for(File f:mounts){
+            boolean parent=false;
+            for(File other:mounts)if(other!=f&&other.getAbsolutePath().startsWith(f.getAbsolutePath()+"/")){parent=true;break;}
+            if(!parent)filtered.add(f);
+        }
+        if(filtered.size()==1){browseFolder(filtered.get(0));return;}
+        if(filtered.size()>1){
+            final File[] choices=filtered.toArray(new File[filtered.size()]);
+            String[] labels=new String[choices.length];
+            for(int i=0;i<labels.length;i++)labels[i]=choices[i].getName();
+            new AlertDialog.Builder(this).setTitle("Choose USB drive")
+                .setItems(labels,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){browseFolder(choices[n]);}})
+                .setNegativeButton("Cancel",null).show();
+            return;
+        }
+        // Fallback allows manual browsing when a USB contains no recognized audio yet.
+        final String[] roots={"/mnt/usb","/mnt/usb_storage","/storage","/mnt/sdcard"};
+        final ArrayList<File> available=new ArrayList<File>();
+        for(String root:roots){File f=new File(root);if(f.isDirectory()&&f.canRead())available.add(f);}
+        if(available.isEmpty()){toast("No readable USB storage found");return;}
+        final String[] labels=new String[available.size()];
+        for(int i=0;i<labels.length;i++)labels[i]=available.get(i).getAbsolutePath();
+        new AlertDialog.Builder(this).setTitle("USB not detected - browse manually")
+            .setItems(labels,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){browseFolder(available.get(n));}})
+            .setNegativeButton("Cancel",null).show();
     }
     void browseFolder(final File folder){
         File[] entries;

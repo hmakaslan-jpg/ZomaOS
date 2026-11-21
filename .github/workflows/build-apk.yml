@@ -29,7 +29,7 @@ jobs:
               repaired=original.copy()
               src=original.load()
               dst=repaired.load()
-              x0,x1,y0,y1=536,610,397,448
+              x0,x1,y0,y1=536,610,389,448
               for y in range(y0,y1):
                   left=[sum(src[xx,y][c] for xx in range(525,533))/8 for c in range(3)]
                   right=[sum(src[xx,y][c] for xx in range(614,622))/8 for c in range(3)]

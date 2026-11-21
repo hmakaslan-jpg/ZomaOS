@@ -1054,40 +1054,47 @@ public class MainActivity extends Activity {
             }
         }
 
+        // Compact glass media controls; the music panel remains readable on all three skins.
         void musicCircle(float x,float y,float r,String glyph,boolean active,boolean day,int accent){
-            fill(day?col("#D5E5F2"):col("#1A324A"));c.drawCircle(x,y,r,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(active?2.4f:1.3f);
-            p.setColor(active?accent:(day?col("#7093AD"):col("#789AB2")));c.drawCircle(x,y,r-1,p);
+            float size=r*1.65f;
+            p.reset();p.setAntiAlias(true);
+            p.setColor(day?Color.argb(78,255,255,255):Color.argb(100,12,29,46));
+            c.drawRoundRect(new RectF(x-size/2,y-size/2,x+size/2,y+size/2),7f,7f,p);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(active?1.7f:1f);
+            p.setColor(active?accent:(day?col("#8EAEC4"):col("#54738C")));
+            c.drawRoundRect(new RectF(x-size/2,y-size/2,x+size/2,y+size/2),7f,7f,p);
             p.setStyle(Paint.Style.FILL);
-            centerText(glyph,x,y+5,r>19?19:r>16?16:14,active?accent:(day?col("#244963"):Color.WHITE),true);
+            int ink=active?accent:(day?col("#28516F"):col("#E7F5FF"));
+            if(x>615&&x<649&&localPlayer!=null&&localPlayer.isPlaying()){
+                float pulse=(float)(0.75+0.25*Math.sin(android.os.SystemClock.uptimeMillis()/230.0));
+                ink=Color.argb((int)(220+35*pulse),Color.red(ink),Color.green(ink),Color.blue(ink));
+            }
+            centerText(glyph,x,y+5,r>19?18:r>16?15:13,ink,true);
         }
 
-        // The fourth tile has an engine printed in the JPEG itself. Cover only
-        // that emblem with a dark metallic circular medallion (no square panel),
-        // then draw a vector apps grid inside it. Keep the original tile border.
+        // The source JPEG has an old engine badge in this tile. Reuse a clean
+        // vertical strip from the SAME tile to conceal it without a circle or panel.
+        // The four Apps squares are then drawn directly on the restored tile surface.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
-            int base=day?col("#D4E4EE"):col("#102B43");
-            int rim=day?col("#537F9E"):col("#45C8FA");
-            p.reset();p.setAntiAlias(true);
-            p.setShader(new RadialGradient(x,y,40f,
-                new int[]{base,day?col("#AEC8D9"):col("#071827")},
-                null,Shader.TileMode.CLAMP));
-            c.drawCircle(x,y,39,p);p.setShader(null);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2f);p.setColor(rim);
-            c.drawCircle(x,y,37,p);p.setStyle(Paint.Style.FILL);
-            p.setColor(day?col("#226A9A"):col("#C5EDFF"));
-            for(int row=0;row<2;row++)for(int col=0;col<2;col++){
-                float l=x-15+col*18,t=y-18+row*18;
-                c.drawRoundRect(new RectF(l,t,l+12,t+12),2,2,p);
+            if(masterArtwork!=null&&!masterArtwork.isRecycled()){
+                p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);
+                c.drawBitmap(masterArtwork,new android.graphics.Rect(513,393,522,458),
+                    new RectF(530,393,609,458),p);
             }
-            centerText("APPS",x,y+29,9,day?col("#254C68"):col("#E0F6FF"),true);
+            p.reset();p.setAntiAlias(true);
+            p.setColor(day?col("#1679C4"):col("#BDEFFF"));
+            for(int row=0;row<2;row++)for(int col=0;col<2;col++){
+                float l=x-14+col*17,t=y-18+row*17;
+                c.drawRoundRect(new RectF(l,t,l+12,t+12),2.5f,2.5f,p);
+            }
+            centerText("APPS",x,y+27,9,day?col("#28506C"):col("#E5F8FF"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}
         @Override protected void onDraw(Canvas canvas){
             c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);
-            drawV11();c.restore();postInvalidateDelayed(1000); // 1 FPS for clock seconds; no 30/60 FPS continuous scene animation
+            drawV11();c.restore();postInvalidateDelayed(localPlayer!=null&&localPlayer.isPlaying()?120:1000); // Animate active music controls smoothly; save CPU when idle
         }
         @Override public boolean onTouchEvent(MotionEvent e){
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();

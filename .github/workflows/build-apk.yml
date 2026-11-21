@@ -31,6 +31,13 @@ jobs:
                   p.unlink()
           for p in sorted(res.rglob('*'),reverse=True):
               if p.is_dir() and not any(p.iterdir()):p.rmdir()
+          themes=root/'assets'/'themes'
+          if themes.exists():
+              allowed_themes={'master_carbon.jpg','master_electric.jpg','master_pearl.jpg'}
+              for p in themes.iterdir():
+                  if p.is_file() and p.name not in allowed_themes:
+                      print('Removing unused theme:',p)
+                      p.unlink()
           java=root/'java'
           for p in java.rglob('*.java'):
               if p.relative_to(java).as_posix()!='com/zoma/os/MainActivity.java':

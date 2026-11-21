@@ -43,6 +43,25 @@ public class MainActivity extends Activity {
     ArrayList<Long> localIds=new ArrayList<Long>();
     ArrayList<File> usbTracks=new ArrayList<File>();
     int usbIndex=-1; boolean usbMode=false;
+    boolean shuffleMode=false; int repeatMode=0; // 0 off, 1 all, 2 one
+    final Random shuffleRandom=new Random();
+    void cycleRepeat(){repeatMode=(repeatMode+1)%3;getPreferences(MODE_PRIVATE).edit().putInt("repeatMode",repeatMode).apply();dashboard.invalidate();}
+    void toggleShuffle(){shuffleMode=!shuffleMode;getPreferences(MODE_PRIVATE).edit().putBoolean("shuffleMode",shuffleMode).apply();dashboard.invalidate();}
+    int nextTrackIndex(int current,int size,int direction){
+        if(size<=1)return 0;
+        if(shuffleMode&&direction>0){int pick=shuffleRandom.nextInt(size-1);return pick>=current?pick+1:pick;}
+        return (current+(direction>0?1:-1)+size)%size;
+    }
+    void onUsbTrackComplete(){
+        if(repeatMode==2&&localPlayer!=null){try{localPlayer.seekTo(0);localPlayer.start();return;}catch(Exception ignored){}}
+        if(repeatMode==0&&usbIndex==usbTracks.size()-1&&!shuffleMode){pauseAudio();return;}
+        nextUsb(1);
+    }
+    void onLocalTrackComplete(){
+        if(repeatMode==2&&localPlayer!=null){try{localPlayer.seekTo(0);localPlayer.start();return;}catch(Exception ignored){}}
+        if(repeatMode==0&&localIndex==localIds.size()-1&&!shuffleMode){pauseAudio();return;}
+        nextLocal(1);
+    }
     boolean resumeAttempted=false;
     final Handler resumeHandler=new Handler();
     final Runnable resumeTick=new Runnable(){public void run(){saveUsbPlaybackState();resumeHandler.postDelayed(this,5000);}};
@@ -146,7 +165,7 @@ public class MainActivity extends Activity {
         super.onWindowFocusChanged(hasFocus);
         if(hasFocus)applyEdgeToEdge();
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);applyEdgeToEdge();centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard)dashboard.setClickable(true);;startMusicDiscovery();try{restoreUsbFolder();}catch(Throwable err){android.util.Log.e("ZomaOS","USB restore failed during launcher startup",err);}resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);applyEdgeToEdge();centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);shuffleMode=getPreferences(MODE_PRIVATE).getBoolean("shuffleMode",false);repeatMode=getPreferences(MODE_PRIVATE).getInt("repeatMode",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);dashboard.setClickable(true);startMusicDiscovery();try{restoreUsbFolder();}catch(Throwable err){android.util.Log.e("ZomaOS","USB restore failed during launcher startup",err);}resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
     // Load only the selected scene and eight small themed assets. No GIF or frame loop.
     void recycleN14(Bitmap b){if(b!=null&&!b.isRecycled())b.recycle();}
     void loadN14Skin(){
@@ -355,14 +374,14 @@ public class MainActivity extends Activity {
             getPreferences(MODE_PRIVATE).edit().putString("last_audio_source","usb").putString("usb_last_file",f.getAbsolutePath()).putInt("usb_last_position",0).putBoolean("usb_was_playing",true).apply();
             trackTitle=f.getName().replaceFirst("(?i)\\.(mp3|m4a|wav|ogg|flac)$", "").replace('_',' ');trackArtist="USB Music";metadataSource="Zoma USB player";
             try{MediaMetadataRetriever m=new MediaMetadataRetriever();m.setDataSource(f.getAbsolutePath());String t=m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);String a=m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);if(t!=null&&t.length()>0)trackTitle=t;if(a!=null&&a.length()>0)trackArtist=a;byte[] art=m.getEmbeddedPicture();if(art!=null)albumArt=BitmapFactory.decodeByteArray(art,0,art.length);m.release();}catch(Exception ignored){}
-            localPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){public void onCompletion(MediaPlayer m){nextUsb(1);}});dashboard.invalidate();
+            localPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){public void onCompletion(MediaPlayer m){onUsbTrackComplete();}});dashboard.invalidate();
         }catch(Throwable e){releaseLocalPlayer();toast("Cannot play this USB audio file");}
     }
     void nextUsb(int direction){
         if(usbTracks.isEmpty())return;
         // Dedicated track navigation: never alter the playback position within the same track.
         int base=usbIndex<0?(direction>0?-1:0):usbIndex;
-        int target=(base+(direction>0?1:-1)+usbTracks.size())%usbTracks.size();
+        int target=nextTrackIndex(base,usbTracks.size(),direction);
         playUsb(target);
     }
     void resumeLastUsb(){
@@ -496,11 +515,11 @@ public class MainActivity extends Activity {
             localPlayer.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);
             localPlayer.prepare();localPlayer.start();localIndex=index;localMode=true;usbMode=false;
             trackTitle=localTitles.get(index);trackArtist=localArtists.get(index);metadataSource="ZomaOS local player";
-            localPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){public void onCompletion(MediaPlayer m){nextLocal(1);}});
+            localPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){public void onCompletion(MediaPlayer m){onLocalTrackComplete();}});
             try{MediaMetadataRetriever mr=new MediaMetadataRetriever();mr.setDataSource(this,uri);byte[] art=mr.getEmbeddedPicture();if(art!=null)albumArt=BitmapFactory.decodeByteArray(art,0,art.length);mr.release();}catch(Exception ignored){}dashboard.invalidate();
         }catch(Throwable e){releaseLocalPlayer();toast("Cannot play selected audio file");}
     }
-    void nextLocal(int step){if(localIds.size()>0)playLocal((localIndex+step+localIds.size())%localIds.size());}
+    void nextLocal(int step){if(localIds.size()>0)playLocal(nextTrackIndex(localIndex,localIds.size(),step));}
     void toggleLocal(){togglePlayback();}
     void openLocalMusic(){
         loadLocalLibrary();
@@ -529,7 +548,7 @@ public class MainActivity extends Activity {
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
-        final String[] items={"Appearance • Night / Daylight", "Accent colors", "Clock • 12 / 24 hour", "Analog clock • Show / hide", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
+        final String[] items={"Appearance • Night / Daylight", "Clock • 12 / 24 hour", "Analog clock • Show / hide", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
         final Dialog dialog=new Dialog(this);dialog.setTitle("ZomaOS V15.8 • Settings");
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(16,10,16,10);panel.setBackgroundColor(Color.rgb(16,39,59));
         TextView heading=new TextView(this);heading.setText("ZOMAOS V15.8   /   SETTINGS");heading.setTextSize(22);heading.setTextColor(Color.WHITE);heading.setPadding(12,8,8,14);panel.addView(heading);
@@ -538,14 +557,14 @@ public class MainActivity extends Activity {
         list.setAdapter(adapter);panel.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         Button close=new Button(this);close.setText("BACK TO DASHBOARD");panel.addView(close);close.setOnClickListener(new View.OnClickListener(){public void onClick(View v){dialog.dismiss();}});
         list.setOnItemClickListener(new AdapterView.OnItemClickListener(){public void onItemClick(AdapterView<?> p,View v,int n,long id){dialog.dismiss();switch(n){
-            case 0:chooseAppearance();break;case 1:chooseTheme();break;case 2:chooseClockFormat();break;
-            case 3:showAnalog=!showAnalog;getPreferences(MODE_PRIVATE).edit().putBoolean("showAnalog",showAnalog).apply();dashboard.invalidate();break;
-            case 4:chooseUsbRoot();break;case 5:chooseAnyMusicApp();break;case 6:showAppCenter();break;
-            case 7:maintenanceCenter();break;case 8:toggleOilReminder();break;
-            case 9:maintenanceInput("Oil change interval (km)","oil_interval",getPreferences(MODE_PRIVATE).getInt("oil_interval",7000));break;
-            case 10:showMode();break;case 11:launch(new String[]{},"settings");break;
+            case 0:chooseAppearance();break;case 1:chooseClockFormat();break;
+            case 2:showAnalog=!showAnalog;getPreferences(MODE_PRIVATE).edit().putBoolean("showAnalog",showAnalog).apply();dashboard.invalidate();break;
+            case 3:chooseUsbRoot();break;case 4:chooseAnyMusicApp();break;case 5:showAppCenter();break;
+            case 6:maintenanceCenter();break;case 7:toggleOilReminder();break;
+            case 8:maintenanceInput("Oil change interval (km)","oil_interval",getPreferences(MODE_PRIVATE).getInt("oil_interval",7000));break;
+            case 9:showMode();break;case 10:launch(new String[]{},"settings");break;
 
-            case 12:new AlertDialog.Builder(MainActivity.this).setTitle("Restore defaults?").setPositiveButton("Reset",new DialogInterface.OnClickListener(){public void onClick(DialogInterface a,int b){getPreferences(MODE_PRIVATE).edit().clear().apply();theme=0;showAnalog=true;centerMode=0;appearance=0;clock12=false;dashboard.invalidate();}}).setNegativeButton("Cancel",null).show();break;
+            case 11:new AlertDialog.Builder(MainActivity.this).setTitle("Restore defaults?").setPositiveButton("Reset",new DialogInterface.OnClickListener(){public void onClick(DialogInterface a,int b){getPreferences(MODE_PRIVATE).edit().clear().apply();theme=0;showAnalog=true;centerMode=0;appearance=0;clock12=false;dashboard.invalidate();}}).setNegativeButton("Cancel",null).show();break;
         }}});
         dialog.setContentView(panel);dialog.show();if(dialog.getWindow()!=null)dialog.getWindow().setLayout(-1,-1);
     }
@@ -907,15 +926,15 @@ public class MainActivity extends Activity {
                     c.drawLine(cx+2,cy-9,cx+2,cy+5,p);c.drawLine(cx+2,cy-9,cx+10,cy-11,p);c.drawLine(cx+10,cy-11,cx+10,cy+3,p);c.drawOval(new RectF(cx-6,cy+3,cx+2,cy+9),p);c.drawOval(new RectF(cx+2,cy+1,cx+10,cy+7),p);break;
                 case 2: // radio
                     c.drawRoundRect(new RectF(cx-11,cy-5,cx+11,cy+8),2,2,p);c.drawLine(cx-7,cy-7,cx+7,cy-12,p);c.drawCircle(cx-5,cy+1,3,p);c.drawLine(cx+2,cy,cx+8,cy,p);c.drawLine(cx+2,cy+4,cx+8,cy+4,p);break;
-                case 3: // Android Auto arrow
+                case 7: // Android Auto arrow
                     Path ar=new Path();ar.moveTo(cx,cy-11);ar.lineTo(cx+10,cy+9);ar.lineTo(cx,cy+4);ar.lineTo(cx-10,cy+9);ar.close();c.drawPath(ar,p);break;
-                case 4: // OBD engine
+                case 3: // OBD engine
                     c.drawRect(cx-9,cy-5,cx+8,cy+7,p);c.drawLine(cx-5,cy-9,cx+4,cy-9,p);c.drawLine(cx-11,cy-2,cx-13,cy-2,p);c.drawLine(cx+9,cy+1,cx+13,cy+1,p);break;
-                case 5: // apps
+                case 4: // apps
                     for(int i=0;i<4;i++){float x=cx-10+(i%2)*12,y=cy-9+(i/2)*12;c.drawRect(x,y,x+8,y+8,p);}break;
-                case 6: // settings
+                case 5: // settings
                     c.drawCircle(cx,cy,8,p);c.drawCircle(cx,cy,3,p);for(int i=0;i<8;i++){double angle=i*Math.PI/4;c.drawLine(cx+(float)Math.cos(angle)*9,cy+(float)Math.sin(angle)*9,cx+(float)Math.cos(angle)*12,cy+(float)Math.sin(angle)*12,p);}break;
-                case 7: // folder
+                case 6: // folder
                     c.drawRoundRect(new RectF(cx-11,cy-5,cx+11,cy+9),2,2,p);c.drawLine(cx-9,cy-5,cx-5,cy-9,p);c.drawLine(cx-5,cy-9,cx+1,cy-9,p);break;
             }
             p.setStyle(Paint.Style.FILL);
@@ -939,17 +958,24 @@ public class MainActivity extends Activity {
         // Theme art remains full resolution; only the media region is redrawn.
         // V15.5: geometry follows the 800x480 artwork, not the previous V15.3 mockup.
         // The master images already contain a clean numbered clock face.
+        // A true symmetric tapered hand. The old triangle used only a 0.7px tip
+        // and made the hour and minute hands appear like thin needles.
         void premiumHand(float cx,float cy,float angle,float length,float width,int color){
             float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
+            float px=-dy,py=dx;
             android.graphics.Path shape=new android.graphics.Path();
-            shape.moveTo(cx-dx*9-dy*width*.42f,cy-dy*9+dx*width*.42f);
-            shape.lineTo(cx+dx*length-dy*.7f,cy+dy*length+dx*.7f);
-            shape.lineTo(cx-dx*9+dy*width*.42f,cy-dy*9-dx*width*.42f);
+            shape.moveTo(cx-dx*9+px*width*.36f,cy-dy*9+py*width*.36f);
+            shape.lineTo(cx+dx*(length-8)+px*width*.47f,cy+dy*(length-8)+py*width*.47f);
+            shape.lineTo(cx+dx*length,cy+dy*length);
+            shape.lineTo(cx+dx*(length-8)-px*width*.47f,cy+dy*(length-8)-py*width*.47f);
+            shape.lineTo(cx-dx*9-px*width*.36f,cy-dy*9-py*width*.36f);
             shape.close();
-            p.reset();p.setAntiAlias(true);p.setColor(Color.argb(125,0,0,0));
-            c.save();c.translate(1.4f,1.8f);c.drawPath(shape,p);c.restore();
+            p.reset();p.setAntiAlias(true);p.setColor(Color.argb(115,0,0,0));
+            c.save();c.translate(1f,1.5f);c.drawPath(shape,p);c.restore();
             p.setColor(color);c.drawPath(shape,p);
-            p.setColor(Color.argb(115,255,255,255));p.setStrokeWidth(.75f);p.setStyle(Paint.Style.STROKE);c.drawPath(shape,p);p.setStyle(Paint.Style.FILL);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.7f);
+            p.setColor(Color.argb(155,255,255,255));c.drawPath(shape,p);
+            p.setStyle(Paint.Style.FILL);
         }
         void drawMasterV15(){
             boolean day=appearance==1;
@@ -958,17 +984,18 @@ public class MainActivity extends Activity {
             int muted=day?col("#456178"):col("#AEC6D8");
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
-            // Clock is centered at (233,148) on all three V15.4 backgrounds.
-            float cx=232f,cy=149f;
+            // The baked 800x480 dial spans roughly x=112..350, y=11..291.
+            // Its center is (231,151); keep the pivot shared by all three hands.
+            float cx=231f,cy=151f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
                 // Do NOT repaint the clock dial or its printed numerals.
                 int handColor=day?col("#E5F4FF"):Color.WHITE;
                 // Tapered premium hands with subtle drop shadow and metal hub.
-                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),55,8,handColor);
-                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),78,5f,handColor);
-                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),86,1.7f,accent);
+                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),49,9,handColor);
+                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),70,6,handColor);
+                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),77,1.8f,accent);
                 fill(col("#233748"));c.drawCircle(cx,cy,7,p);
                 fill(col("#EAF6FF"));c.drawCircle(cx,cy,3.5f,p);
             }else{
@@ -1016,21 +1043,49 @@ public class MainActivity extends Activity {
                     fill(fg);c.drawCircle(left+(right-left)*f,top+1.5f,3,p);
                 }
             }catch(Exception ignored){}}
-            centerText("|◀",548,340,21,fg,true);
-            centerText(localPlayer!=null&&localPlayer.isPlaying()?"Ⅱ":"▶",622,340,24,accent,true);
-            centerText("▶|",697,340,21,fg,true);
+            musicCircle(542,335,15,"⇄",shuffleMode,day,accent);
+            musicCircle(584,335,17,"◀",false,day,accent);
+            musicCircle(631,335,21,localPlayer!=null&&localPlayer.isPlaying()?"Ⅱ":"▶",true,day,accent);
+            musicCircle(680,335,17,"▶",false,day,accent);
+            musicCircle(725,335,15,repeatMode==2?"↻¹":"↻",repeatMode!=0,day,accent);
             drawOriginalFiveDockApps(day,accent);
+            if(pressedDock>=0&&pressedDock<5){
+                float l=dockEdges[pressedDock]+5,r=dockEdges[pressedDock+1]-5;
+                p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(2f);p.setColor(accent);
+                c.drawRoundRect(new RectF(l,386,r,468),8,8,p);
+                p.setStyle(Paint.Style.FILL);
+            }
         }
 
-        // Preserve all FIVE baked artwork tiles. Replace only the OBD engine graphic
-        // inside tile four with a matching Apps glyph, leaving the frame untouched.
+        void musicCircle(float x,float y,float r,String glyph,boolean active,boolean day,int accent){
+            fill(day?col("#D5E5F2"):col("#1A324A"));c.drawCircle(x,y,r,p);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(active?2.4f:1.3f);
+            p.setColor(active?accent:(day?col("#7093AD"):col("#789AB2")));c.drawCircle(x,y,r-1,p);
+            p.setStyle(Paint.Style.FILL);
+            centerText(glyph,x,y+5,r>19?19:r>16?16:14,active?accent:(day?col("#244963"):Color.WHITE),true);
+        }
+
+        // The fourth tile has an engine printed in the JPEG itself. Cover only
+        // that emblem with a dark metallic circular medallion (no square panel),
+        // then draw a vector apps grid inside it. Keep the original tile border.
         void drawOriginalFiveDockApps(boolean day,int accent){
-            int ink=day?col("#32516B"):col("#D9F4FF");
-            int tile=day?col("#D5E2E9"):col("#0A1B2A");
-            // The original tile-four frame spans x=500..638. Do not cover its border.
-            fill(tile);c.drawRoundRect(new RectF(540,398,603,452),6,6,p);
-            liteIcon(5,571,420,ink);
-            centerText("APPS",571,449,11,ink,true);
+            float x=569f,y=423f;
+            int base=day?col("#D4E4EE"):col("#102B43");
+            int rim=day?col("#537F9E"):col("#45C8FA");
+            p.reset();p.setAntiAlias(true);
+            p.setShader(new RadialGradient(x,y,40f,
+                new int[]{base,day?col("#AEC8D9"):col("#071827")},
+                null,Shader.TileMode.CLAMP));
+            c.drawCircle(x,y,39,p);p.setShader(null);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2f);p.setColor(rim);
+            c.drawCircle(x,y,37,p);p.setStyle(Paint.Style.FILL);
+            p.setColor(day?col("#226A9A"):col("#C5EDFF"));
+            for(int row=0;row<2;row++)for(int col=0;col<2;col++){
+                float l=x-15+col*18,t=y-18+row*18;
+                c.drawRoundRect(new RectF(l,t,l+12,t+12),2,2,p);
+            }
+            centerText("APPS",x,y+29,9,day?col("#254C68"):col("#E0F6FF"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}
@@ -1042,12 +1097,13 @@ public class MainActivity extends Activity {
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();
             int a=e.getActionMasked();
             if(a==MotionEvent.ACTION_DOWN){
+                android.util.Log.d("ZomaTouch", "DOWN x="+x+" y="+y);
                 // A fresh gesture must not inherit an old pending long-press.
                 if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
                 pendingDockLongPress=null;pressedDock=-1;dockLongPressed=false;draggingSeek=false;
                 touchStarted=true;downX=x;downY=y;
                 if(y>=382&&y<=472&&x>=70&&x<787){
-                    pressedDock=masterDockIndex(x);dockLongPressed=false;
+                    pressedDock=masterDockIndex(x);dockLongPressed=false;invalidate();
                     final int idx=pressedDock;
                     if(idx>=0&&idx<5){pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
                         dockHandler.postDelayed(pendingDockLongPress,650);}
@@ -1057,8 +1113,9 @@ public class MainActivity extends Activity {
                 return true;
             }
             if(a==MotionEvent.ACTION_CANCEL){
+                android.util.Log.w("ZomaTouch", "CANCEL dock="+pressedDock+" x="+x+" y="+y);
                 if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
-                pendingDockLongPress=null;pressedDock=-1;draggingSeek=false;touchStarted=false;return true;
+                pendingDockLongPress=null;pressedDock=-1;draggingSeek=false;touchStarted=false;invalidate();return true;
             }
             if(a==MotionEvent.ACTION_MOVE){
                 if(draggingSeek){seekMusic(x);return true;}
@@ -1071,16 +1128,22 @@ public class MainActivity extends Activity {
                 return true;
             }
             if(a!=MotionEvent.ACTION_UP)return true;
-            if(!touchStarted)return true;
+            if(!touchStarted){android.util.Log.w("ZomaTouch", "UP without DOWN x="+x+" y="+y);return true;}
+            android.util.Log.d("ZomaTouch", "UP x="+x+" y="+y+" dock="+pressedDock);
             touchStarted=false;
             if(pendingDockLongPress!=null){dockHandler.removeCallbacks(pendingDockLongPress);pendingDockLongPress=null;}
             if(pressedDock>=0){
-                int i=pressedDock;pressedDock=-1;
+                int i=pressedDock;pressedDock=-1;invalidate();
                 // Never trigger a tile when the user drags far away or into another tile.
                 boolean withinTile=x>=dockEdges[i]-DOCK_RELEASE_SLOP
                     &&x<=dockEdges[i+1]+DOCK_RELEASE_SLOP
                     &&y>=382-DOCK_RELEASE_SLOP&&y<=472+DOCK_RELEASE_SLOP;
-                if(!dockLongPressed&&withinTile)activateDock(i);
+                if(!dockLongPressed&&withinTile){
+                    android.util.Log.i("ZomaTouch", "ACTIVATE dock="+i);
+                    activateDock(i);
+                }else{
+                    android.util.Log.w("ZomaTouch", "SKIPPED dock="+i+" long="+dockLongPressed+" within="+withinTile);
+                }
                 dockLongPressed=false;return true;
             }
             if(draggingSeek){draggingSeek=false;seekMusic(x);return true;}
@@ -1101,10 +1164,12 @@ public class MainActivity extends Activity {
                 showZomaSettings();return true;
             }
             // Media controls are inside the live 130..767 x 260..350 panel.
-            if(y>=310&&y<=359&&x>=515&&x<=738){
-                if(x<588){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}
-                else if(x<665)togglePlayback();
-                else {if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}
+            if(y>=310&&y<=359&&x>=521&&x<=744){
+                if(x<562)toggleShuffle();
+                else if(x<609){if(usbMode)nextUsb(-1);else if(localMode)nextLocal(-1);else openRememberedUsb();}
+                else if(x<655)togglePlayback();
+                else if(x<703){if(usbMode)nextUsb(1);else if(localMode)nextLocal(1);else openRememberedUsb();}
+                else cycleRepeat();
                 return true;
             }
             if(y>=28&&y<=285&&x>=105&&x<=357){chooseCarbonGauge();return true;}

@@ -981,7 +981,7 @@ public class MainActivity extends Activity {
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
             // Corrected from real head-unit photo: the previous pivot was right/below dial center.
-            float cx=220f,cy=144f;
+            float cx=205f,cy=136f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
@@ -1074,30 +1074,33 @@ public class MainActivity extends Activity {
         // The source JPEG has an old engine badge in this tile. Reuse a clean
         // vertical strip from the SAME tile to conceal it without a circle or panel.
         // The four Apps squares are then drawn directly on the restored tile surface.
-        // Repaint the complete Apps tile as a single beveled surface.
-        // Never stretch a thin photo strip: it creates the visible seam seen on device.
+        // Preserve the original tile artwork, bevel, glow and texture.
+        // Reconstruct only the old engine glyph from adjacent background pixels.
         void drawOriginalFiveDockApps(boolean day,int accent){
-            float x=569f,y=423f;
-            android.graphics.Path tile=new android.graphics.Path();
-            tile.moveTo(497,385);tile.lineTo(644,385);tile.lineTo(660,398);
-            tile.lineTo(648,462);tile.lineTo(486,462);tile.lineTo(474,450);
-            tile.lineTo(486,400);tile.close();
+            if(masterArtwork!=null&&!masterArtwork.isRecycled()){
+                p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);
+                android.graphics.Bitmap patch=android.graphics.Bitmap.createBitmap(82,57,Bitmap.Config.ARGB_8888);
+                for(int yy=0;yy<57;yy++){
+                    int sy=394+yy;
+                    int left=masterArtwork.getPixel(532,sy);
+                    int right=masterArtwork.getPixel(614,sy);
+                    for(int xx=0;xx<82;xx++){
+                        float t=xx/81f;
+                        int red=(int)(Color.red(left)*(1-t)+Color.red(right)*t);
+                        int green=(int)(Color.green(left)*(1-t)+Color.green(right)*t);
+                        int blue=(int)(Color.blue(left)*(1-t)+Color.blue(right)*t);
+                        patch.setPixel(xx,yy,Color.rgb(red,green,blue));
+                    }
+                }
+                c.drawBitmap(patch,532,394,p);
+                patch.recycle();
+            }
             p.reset();p.setAntiAlias(true);
-            p.setShader(new android.graphics.LinearGradient(484,387,644,462,
-                day?new int[]{col("#F2F8FB"),col("#B8D1E2"),col("#E2F0F7")}:new int[]{col("#344A61"),col("#172A40"),col("#2E526A")},
-                null,Shader.TileMode.CLAMP));
-            c.drawPath(tile,p);p.setShader(null);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(3f);
-            p.setColor(day?col("#DDF4FF"):col("#A4EFFF"));c.drawPath(tile,p);
-            p.setStrokeWidth(1.2f);p.setColor(day?col("#639AB9"):col("#2B9DD1"));
-            c.drawLine(496,391,640,391,p);c.drawLine(489,455,645,455,p);
-            p.setStyle(Paint.Style.FILL);
-            p.setColor(day?col("#247BAE"):col("#AEEBFF"));
+            p.setColor(day?col("#247BAE"):col("#BDEFFF"));
             for(int row=0;row<2;row++)for(int col=0;col<2;col++){
-                float l=x-15+col*18,t=y-21+row*18;
+                float l=569-15+col*18,t=423-21+row*18;
                 c.drawRoundRect(new RectF(l,t,l+13,t+13),2.5f,2.5f,p);
             }
-            centerText("APPS",x,y+29,10,day?col("#2C648A"):col("#DDF7FF"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}

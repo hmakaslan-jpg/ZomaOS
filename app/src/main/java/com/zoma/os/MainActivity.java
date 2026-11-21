@@ -50,8 +50,8 @@ public class MainActivity extends Activity {
     AudioManager audioManager; boolean hasAudioFocus=false; boolean clock12=false; int appearance=0;
     AudioManager.OnAudioFocusChangeListener focusListener=new AudioManager.OnAudioFocusChangeListener(){public void onAudioFocusChange(int change){if(change==AudioManager.AUDIOFOCUS_LOSS||change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT){pauseAudio();}}};
     // User-configurable dock. Empty preference means the original built-in action.
-    final String[] dockDefaults={"USB MUSIC","RADIO FM","ANDROID AUTO","OBD","FILE BROWSER","APPS"};
-    final int[] dockEdges={112,225,337,449,561,673,785};
+    final String[] dockDefaults={"USB MUSIC","RADIO FM","ANDROID AUTO","APPS","FILE BROWSER"};
+    final int[] dockEdges={70,214,356,498,640,787};
     boolean dockLongPressed=false;
     final Handler dockHandler=new Handler();
     Runnable pendingDockLongPress;
@@ -59,7 +59,8 @@ public class MainActivity extends Activity {
     boolean touchStarted=false;
     float downX=0f,downY=0f;
     // Small finger movement is normal on resistive/older car touchscreens.
-    static final float DOCK_TOUCH_SLOP=38f;
+    static final float DOCK_LONG_PRESS_SLOP=18f;
+    static final float DOCK_RELEASE_SLOP=32f;
     String dockLabel(int index){
         String pkg=getPreferences(MODE_PRIVATE).getString("dock_pkg_"+index,"");
         if(pkg.length()==0)return dockDefaults[index];
@@ -76,9 +77,9 @@ public class MainActivity extends Activity {
         if(index==0)openRememberedUsb();
         else if(index==1)openRadio();
         else if(index==2)openAndroidAuto();
-        else if(index==3)showMode();
+        else if(index==3)showAppCenter();
         else if(index==4)openFileBrowser();
-        else if(index==5)showAppCenter();
+        
     }
     // Single Android Auto entry point for dock and entertainment hub.
     void openAndroidAuto(){
@@ -131,10 +132,14 @@ public class MainActivity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                              WindowManager.LayoutParams.FLAG_FULLSCREEN);
         View decor=getWindow().getDecorView();
-        int flags=View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                  |View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        // Android 4.1-4.3: HIDE_NAVIGATION is cleared by the FIRST touch.
+        // That touch can be consumed by System UI instead of reaching our buttons.
+        // Only hide navigation on API 19+ where IMMERSIVE_STICKY is supported.
+        int flags=View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                   |View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-        if(Build.VERSION.SDK_INT>=19){flags|=4096; /* IMMERSIVE_STICKY */}
+        if(Build.VERSION.SDK_INT>=19){
+            flags|=View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|4096;
+        }
         decor.setSystemUiVisibility(flags);
     }
     @Override public void onWindowFocusChanged(boolean hasFocus){
@@ -954,17 +959,17 @@ public class MainActivity extends Activity {
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
             // Clock is centered at (233,148) on all three V15.4 backgrounds.
-            float cx=233f,cy=148f;
+            float cx=232f,cy=149f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
                 // Do NOT repaint the clock dial or its printed numerals.
                 int handColor=day?col("#E5F4FF"):Color.WHITE;
                 // Tapered premium hands with subtle drop shadow and metal hub.
-                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),43,6,handColor);
-                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),62,3.5f,handColor);
-                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),71,1.5f,accent);
-                fill(col("#233748"));c.drawCircle(cx,cy,6,p);
+                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),55,8,handColor);
+                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),78,5f,handColor);
+                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),86,1.7f,accent);
+                fill(col("#233748"));c.drawCircle(cx,cy,7,p);
                 fill(col("#EAF6FF"));c.drawCircle(cx,cy,3.5f,p);
             }else{
                 fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
@@ -980,7 +985,7 @@ public class MainActivity extends Activity {
             fitCenteredText(clockText(),728,26,20,117,fg,true);
             // Player fits WITHIN the artwork's horizontal media frame (y=300..368).
             // Do not cover its illuminated border, especially on Pearl Day.
-            float pl=day?150:133,pr=day?744:753,pt=310,pb=358;
+            float pl=day?118:116,pr=day?759:764,pt=310,pb=359;
             fill(day?Color.argb(228,239,247,253):Color.argb(222,12,24,39));
             c.drawRoundRect(new RectF(pl,pt,pr,pb),7,7,p);
             float artX=pl+5;
@@ -994,7 +999,7 @@ public class MainActivity extends Activity {
             String artist=(usbMode||localMode)?trackArtist:"USB MUSIC";
             if(title==null||title.length()==0)title="Choose USB music";
             if(artist==null)artist="";
-            float tx=artX+48, barRight=day?527:535;
+            float tx=artX+48, barRight=day?520:530;
             fill(fg);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));p.setTextSize(12);
             title=TextUtils.ellipsize(title,new android.text.TextPaint(p),barRight-tx,TextUtils.TruncateAt.END).toString();
             text(title,tx,326,12,fg,true);
@@ -1014,25 +1019,18 @@ public class MainActivity extends Activity {
             centerText("|◀",548,340,21,fg,true);
             centerText(localPlayer!=null&&localPlayer.isPlaying()?"Ⅱ":"▶",622,340,24,accent,true);
             centerText("▶|",697,340,21,fg,true);
-            drawSixTileDock(day,accent);
+            drawOriginalFiveDockApps(day,accent);
         }
 
-        // Six independent visible tiles, matching the exact touch grid below.
-        void drawSixTileDock(boolean day,int accent){
-            int base=day?col("#E3EDF5"):col("#0B1627");
-            int ink=day?col("#184767"):Color.WHITE;
-            // Opaque strip hides the five obsolete artwork tiles before painting six.
-            fill(base);c.drawRect(109,370,790,480,p);
-            for(int i=0;i<6;i++){
-                float left=114+i*112f,right=left+105f;
-                fill(day?col("#D4E5F1"):col("#15243A"));
-                c.drawRoundRect(new RectF(left,382,right,463),10,10,p);
-                p.setColor(accent);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.2f);
-                c.drawRoundRect(new RectF(left+2,384,right-2,461),9,9,p);
-                p.setStyle(Paint.Style.FILL);
-                liteIcon(i==4?7:i==5?5:i==2?3:i==3?4:i==1?2:2,(left+right)/2,415,ink);
-                centerText(i==0?"USB":i==1?"RADIO":i==2?"AUTO":i==3?"OBD":i==4?"FILES":"APPS",(left+right)/2,448,11,ink,true);
-            }
+        // Preserve all FIVE baked artwork tiles. Replace only the OBD engine graphic
+        // inside tile four with a matching Apps glyph, leaving the frame untouched.
+        void drawOriginalFiveDockApps(boolean day,int accent){
+            int ink=day?col("#32516B"):col("#D9F4FF");
+            int tile=day?col("#D5E2E9"):col("#0A1B2A");
+            // The original tile-four frame spans x=500..638. Do not cover its border.
+            fill(tile);c.drawRoundRect(new RectF(540,398,603,452),6,6,p);
+            liteIcon(5,571,420,ink);
+            centerText("APPS",571,449,11,ink,true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}
@@ -1042,10 +1040,13 @@ public class MainActivity extends Activity {
         }
         @Override public boolean onTouchEvent(MotionEvent e){
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();
-            int a=e.getAction();
+            int a=e.getActionMasked();
             if(a==MotionEvent.ACTION_DOWN){
+                // A fresh gesture must not inherit an old pending long-press.
+                if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
+                pendingDockLongPress=null;pressedDock=-1;dockLongPressed=false;draggingSeek=false;
                 touchStarted=true;downX=x;downY=y;
-                if(y>=382&&y<=463&&x>=112&&x<785){
+                if(y>=382&&y<=472&&x>=70&&x<787){
                     pressedDock=masterDockIndex(x);dockLongPressed=false;
                     final int idx=pressedDock;
                     if(idx>=0&&idx<5){pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
@@ -1061,9 +1062,11 @@ public class MainActivity extends Activity {
             }
             if(a==MotionEvent.ACTION_MOVE){
                 if(draggingSeek){seekMusic(x);return true;}
-                if(pressedDock>=0&&(Math.abs(x-downX)>DOCK_TOUCH_SLOP||Math.abs(y-downY)>DOCK_TOUCH_SLOP)){
+                if(pressedDock>=0&&(Math.abs(x-downX)>DOCK_LONG_PRESS_SLOP||Math.abs(y-downY)>DOCK_LONG_PRESS_SLOP)){
+                    // Movement cancels the long press, not the short tap. Older resistive
+                    // touch panels commonly jitter before ACTION_UP.
                     if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
-                    pendingDockLongPress=null;pressedDock=-1;
+                    pendingDockLongPress=null;
                 }
                 return true;
             }
@@ -1071,7 +1074,15 @@ public class MainActivity extends Activity {
             if(!touchStarted)return true;
             touchStarted=false;
             if(pendingDockLongPress!=null){dockHandler.removeCallbacks(pendingDockLongPress);pendingDockLongPress=null;}
-            if(pressedDock>=0){int i=pressedDock;pressedDock=-1;if(!dockLongPressed&&Math.abs(x-downX)<=DOCK_TOUCH_SLOP&&Math.abs(y-downY)<=DOCK_TOUCH_SLOP){activateDock(i);}dockLongPressed=false;return true;}
+            if(pressedDock>=0){
+                int i=pressedDock;pressedDock=-1;
+                // Never trigger a tile when the user drags far away or into another tile.
+                boolean withinTile=x>=dockEdges[i]-DOCK_RELEASE_SLOP
+                    &&x<=dockEdges[i+1]+DOCK_RELEASE_SLOP
+                    &&y>=382-DOCK_RELEASE_SLOP&&y<=472+DOCK_RELEASE_SLOP;
+                if(!dockLongPressed&&withinTile)activateDock(i);
+                dockLongPressed=false;return true;
+            }
             if(draggingSeek){draggingSeek=false;seekMusic(x);return true;}
             x=downX;y=downY; // Use the original contact point for single-tap hotspots.
             // Header quick links open the actual system controls (not decorative labels).

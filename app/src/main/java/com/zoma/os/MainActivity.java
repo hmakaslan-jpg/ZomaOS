@@ -178,16 +178,19 @@ public class MainActivity extends Activity {
         if(masterArtwork!=null){
             Bitmap clean=masterArtwork.copy(Bitmap.Config.ARGB_8888,true);
             if(clean!=null){
-                // The engine artwork is confined to the interior of dock tile #4.
-                // Interpolate the real image's clean top/bottom pixels, with soft edges.
-                for(int yy=399;yy<=447;yy++)for(int xx=544;xx<=601;xx++){
-                    float edge=Math.min(Math.min((xx-544)/7f,(601-xx)/7f),Math.min((yy-399)/6f,(447-yy)/6f));
-                    float blend=Math.max(0f,Math.min(1f,edge));blend=blend*blend*(3f-2f*blend);
-                    float t=(yy-399)/48f;
-                    int a=masterArtwork.getPixel(xx,397),b=masterArtwork.getPixel(xx,449),old=masterArtwork.getPixel(xx,yy);
-                    int rr=(int)((Color.red(a)*(1-t)+Color.red(b)*t)*blend+Color.red(old)*(1-blend));
-                    int gg=(int)((Color.green(a)*(1-t)+Color.green(b)*t)*blend+Color.green(old)*(1-blend));
-                    int bb=(int)((Color.blue(a)*(1-t)+Color.blue(b)*t)*blend+Color.blue(old)*(1-blend));
+                // Rebuild the entire icon interior by interpolating untouched pixels
+                // from the same dock tile on each row. Tested against all three
+                // original 800x480 theme images: avoids old badge strokes.
+                for(int yy=392;yy<=453;yy++)for(int xx=536;xx<=612;xx++){
+                    float t=(xx-536)/76f;
+                    int left=masterArtwork.getPixel(534,yy);
+                    int right=masterArtwork.getPixel(615,yy);
+                    int old=masterArtwork.getPixel(xx,yy);
+                    float edge=Math.min(1f,Math.min((xx-536)/4f,(612-xx)/4f));
+                    float blend=Math.max(0f,edge);blend=blend*blend*(3f-2f*blend);
+                    int rr=(int)((Color.red(left)*(1-t)+Color.red(right)*t)*blend+Color.red(old)*(1-blend));
+                    int gg=(int)((Color.green(left)*(1-t)+Color.green(right)*t)*blend+Color.green(old)*(1-blend));
+                    int bb=(int)((Color.blue(left)*(1-t)+Color.blue(right)*t)*blend+Color.blue(old)*(1-blend));
                     clean.setPixel(xx,yy,Color.rgb(rr,gg,bb));
                 }
                 masterArtwork.recycle();masterArtwork=clean;

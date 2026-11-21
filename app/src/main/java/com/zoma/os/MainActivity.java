@@ -1126,33 +1126,7 @@ public class MainActivity extends Activity {
         // Avoid the circular badge which made this button visually inconsistent.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
-            // Reconstruct the engine symbol from small clean tiles of this SAME
-            // theme image. Never scale a single patch across the whole button.
-            if(masterArtwork!=null){
-                int cropX=appearance==1?25:4;
-                float sx=(masterArtwork.getWidth()-cropX-4)/800f;
-                float sy=(masterArtwork.getHeight()-8)/480f;
-                Paint patchPaint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
-                // Source from the unmarked interior immediately to the left.
-                // Small 4x4 blocks retain texture and the original vertical gradient.
-                for(int yy=397;yy<452;yy+=4){
-                    for(int xx=534;xx<608;xx+=4){
-                        int w=Math.min(4,608-xx),h=Math.min(4,452-yy);
-                        int srcX=appearance==1?512:515;
-                        srcX+=((xx-534)%12);
-                        int sl=cropX+Math.round(srcX*sx);
-                        int st=8+Math.round(yy*sy);
-                        int sr=cropX+Math.round((srcX+w)*sx);
-                        int sb=8+Math.round((yy+h)*sy);
-                        sl=Math.max(0,Math.min(masterArtwork.getWidth()-2,sl));
-                        st=Math.max(0,Math.min(masterArtwork.getHeight()-2,st));
-                        sr=Math.max(sl+1,Math.min(masterArtwork.getWidth(),sr));
-                        sb=Math.max(st+1,Math.min(masterArtwork.getHeight(),sb));
-                        c.drawBitmap(masterArtwork,new Rect(sl,st,sr,sb),
-                          new RectF(xx,yy,xx+w,yy+h),patchPaint);
-                    }
-                }
-            }
+            // The OBD engine artwork is removed from the master JPG at build time.
             int color=day?col("#1679C4"):col("#C5EDFF");
             p.reset();p.setAntiAlias(true);p.setColor(color);
             for(int row=0;row<2;row++)for(int column=0;column<2;column++){

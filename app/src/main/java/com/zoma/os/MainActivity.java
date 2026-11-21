@@ -960,21 +960,26 @@ public class MainActivity extends Activity {
         // The master images already contain a clean numbered clock face.
         // A true symmetric tapered hand. The old triangle used only a 0.7px tip
         // and made the hour and minute hands appear like thin needles.
+        // Sport design #2: short counterweight, angular tapered body and crisp tip.
+        // All vertices are calculated from one shared pivot to prevent wobble.
         void premiumHand(float cx,float cy,float angle,float length,float width,int color){
             float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
             float px=-dy,py=dx;
             android.graphics.Path shape=new android.graphics.Path();
-            shape.moveTo(cx-dx*9+px*width*.36f,cy-dy*9+py*width*.36f);
-            shape.lineTo(cx+dx*(length-8)+px*width*.47f,cy+dy*(length-8)+py*width*.47f);
+            shape.moveTo(cx-dx*12+px*width*.30f,cy-dy*12+py*width*.30f);
+            shape.lineTo(cx+dx*5+px*width*.55f,cy+dy*5+py*width*.55f);
+            shape.lineTo(cx+dx*(length-12)+px*width*.34f,cy+dy*(length-12)+py*width*.34f);
             shape.lineTo(cx+dx*length,cy+dy*length);
-            shape.lineTo(cx+dx*(length-8)-px*width*.47f,cy+dy*(length-8)-py*width*.47f);
-            shape.lineTo(cx-dx*9-px*width*.36f,cy-dy*9-py*width*.36f);
+            shape.lineTo(cx+dx*(length-12)-px*width*.34f,cy+dy*(length-12)-py*width*.34f);
+            shape.lineTo(cx+dx*5-px*width*.55f,cy+dy*5-py*width*.55f);
+            shape.lineTo(cx-dx*12-px*width*.30f,cy-dy*12-py*width*.30f);
             shape.close();
-            p.reset();p.setAntiAlias(true);p.setColor(Color.argb(115,0,0,0));
-            c.save();c.translate(1f,1.5f);c.drawPath(shape,p);c.restore();
+            p.reset();p.setAntiAlias(true);
+            p.setColor(Color.argb(105,0,0,0));
+            c.save();c.translate(1.2f,1.5f);c.drawPath(shape,p);c.restore();
             p.setColor(color);c.drawPath(shape,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.7f);
-            p.setColor(Color.argb(155,255,255,255));c.drawPath(shape,p);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.75f);
+            p.setColor(Color.argb(145,255,255,255));c.drawPath(shape,p);
             p.setStyle(Paint.Style.FILL);
         }
         void drawMasterV15(){
@@ -987,7 +992,7 @@ public class MainActivity extends Activity {
             // The baked 800x480 dial spans roughly x=112..350, y=11..291.
             // Its center is (231,151); keep the pivot shared by all three hands.
             // Separate calibration for Day artwork; Carbon and Electric share one geometry.
-            float cx=day?231f:231f,cy=day?151f:151f;
+            float cx=day?231f:231f,cy=day?151f:151f; // Day calibration pending artwork measurement
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
@@ -997,8 +1002,8 @@ public class MainActivity extends Activity {
                 premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),49,9,handColor);
                 premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),70,6,handColor);
                 premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),77,1.8f,accent);
-                fill(col("#233748"));c.drawCircle(cx,cy,7,p);
-                fill(col("#EAF6FF"));c.drawCircle(cx,cy,3.5f,p);
+                fill(col("#233748"));c.drawCircle(cx,cy,6,p);
+                fill(col("#EAF6FF"));c.drawCircle(cx,cy,2.8f,p);
             }else{
                 fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
                 centerText(speed>=0?String.valueOf(speed):"--",cx,cy+10,33,Color.WHITE,true);

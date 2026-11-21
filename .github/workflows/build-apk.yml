@@ -18,7 +18,7 @@ jobs:
       - name: Remove baked OBD symbol from the three original theme images
         shell: bash
         run: |
-          python3 -m pip install --quiet Pillow numpy
+          python3 -m pip install --quiet Pillow numpy opencv-python-headless
           python3 - <<'PYREPAIR'
           from PIL import Image, ImageFilter
           from pathlib import Path
@@ -31,22 +31,25 @@ jobs:
               dst=repaired.load()
               x0,x1,y0,y1=536,610,389,448
               if theme=='pearl':
-                  # Day only: reconstruct each horizontal row from clean
-                  # silver pixels at both sides of the OBD engraving.
-                  # A wide feathered oval avoids any rectangular patch edge.
+                  # Day only: remove the actual dark engine strokes by inpainting,
+                  # then soften only the center of the repaired button.
+                  # Do not alter the button's silver perimeter or blue glow.
+                  import cv2
                   import numpy as np
-                  arr=np.asarray(original,dtype=np.float32).copy()
-                  Y,X=np.mgrid[377:461,510:641]
-                  left=arr[377:461,522:529].mean(axis=1)
-                  right=arr[377:461,622:629].mean(axis=1)
-                  t=np.clip((X-526)/99.0,0,1)[...,None]
-                  surface=left[:,None,:]*(1-t)+right[:,None,:]*t
-                  rr=((X-573)/48.0)**2+((Y-418)/37.0)**2
-                  alpha=np.clip((1.0-rr)/0.40,0,1)
+                  rgb=np.asarray(original)
+                  im=cv2.cvtColor(rgb,cv2.COLOR_RGB2BGR)
+                  gray=cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+                  mask=np.zeros(gray.shape,np.uint8)
+                  mask[389:446,532:617]=np.uint8(gray[389:446,532:617]<130)*255
+                  mask=cv2.dilate(mask,np.ones((5,5),np.uint8))
+                  repaired_cv=cv2.inpaint(im,mask,10,cv2.INPAINT_TELEA)
+                  softened=cv2.GaussianBlur(repaired_cv,(25,25),7)
+                  Y,X=np.mgrid[:480,:800]
+                  rr=((X-574)/39.)**2+((Y-418)/29.)**2
+                  alpha=np.clip((1.10-rr)/.5,0,1)
                   alpha=alpha*alpha*(3-2*alpha)
-                  region=arr[377:461,510:641]
-                  region[:]=region*(1-alpha[...,None])+surface*alpha[...,None]
-                  result=Image.fromarray(np.uint8(np.clip(arr,0,255)),'RGB')
+                  fixed=np.uint8(np.clip(repaired_cv*(1-alpha[:,:,None])+softened*alpha[:,:,None],0,255))
+                  result=Image.fromarray(cv2.cvtColor(fixed,cv2.COLOR_BGR2RGB))
               else:
                   for y in range(y0,y1):
                       left=[sum(src[xx,y][c] for xx in range(525,533))/8 for c in range(3)]

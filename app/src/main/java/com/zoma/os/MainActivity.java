@@ -1076,10 +1076,14 @@ public class MainActivity extends Activity {
         // The four Apps squares are then drawn directly on the restored tile surface.
         // Preserve the original tile artwork, bevel, glow and texture.
         // Reconstruct only the old engine glyph from adjacent background pixels.
+        Bitmap appsPatchCache; Bitmap appsPatchSource;
         void drawOriginalFiveDockApps(boolean day,int accent){
             if(masterArtwork!=null&&!masterArtwork.isRecycled()){
                 p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);
-                android.graphics.Bitmap patch=android.graphics.Bitmap.createBitmap(82,57,Bitmap.Config.ARGB_8888);
+                if(appsPatchSource!=masterArtwork||appsPatchCache==null){
+                    if(appsPatchCache!=null&&!appsPatchCache.isRecycled())appsPatchCache.recycle();
+                    appsPatchCache=android.graphics.Bitmap.createBitmap(82,57,Bitmap.Config.ARGB_8888);
+                    appsPatchSource=masterArtwork;
                 for(int yy=0;yy<57;yy++){
                     int sy=394+yy;
                     int left=masterArtwork.getPixel(532,sy);
@@ -1089,11 +1093,11 @@ public class MainActivity extends Activity {
                         int red=(int)(Color.red(left)*(1-t)+Color.red(right)*t);
                         int green=(int)(Color.green(left)*(1-t)+Color.green(right)*t);
                         int blue=(int)(Color.blue(left)*(1-t)+Color.blue(right)*t);
-                        patch.setPixel(xx,yy,Color.rgb(red,green,blue));
+                        appsPatchCache.setPixel(xx,yy,Color.rgb(red,green,blue));
                     }
                 }
-                c.drawBitmap(patch,532,394,p);
-                patch.recycle();
+                }
+                c.drawBitmap(appsPatchCache,532,394,p);
             }
             p.reset();p.setAntiAlias(true);
             p.setColor(day?col("#247BAE"):col("#BDEFFF"));

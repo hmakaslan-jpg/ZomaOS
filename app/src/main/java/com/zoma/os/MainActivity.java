@@ -984,22 +984,36 @@ public class MainActivity extends Activity {
         // A true symmetric tapered hand. The old triangle used only a 0.7px tip
         // and made the hour and minute hands appear like thin needles.
         // Balanced polished steel watch hands, with the exact same shared pivot.
+        // V15.8 Sport #2: machined silver body, recessed neon inlay and crisp edges.
+        // Both hands rotate around the same exact pivot. No bitmap scaling or offsets.
         void premiumHand(float cx,float cy,float angle,float length,float width,int color){
             float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
             float px=-dy,py=dx;
-            android.graphics.Path shape=new android.graphics.Path();
-            shape.moveTo(cx-dx*8+px*width*.38f,cy-dy*8+py*width*.38f);
-            shape.lineTo(cx+dx*(length*.76f)+px*width*.46f,cy+dy*(length*.76f)+py*width*.46f);
-            shape.lineTo(cx+dx*length,cy+dy*length);
-            shape.lineTo(cx+dx*(length*.76f)-px*width*.46f,cy+dy*(length*.76f)-py*width*.46f);
-            shape.lineTo(cx-dx*8-px*width*.38f,cy-dy*8-py*width*.38f);
-            shape.close();
+            android.graphics.Path body=new android.graphics.Path();
+            body.moveTo(cx-dx*8+px*width*.20f,cy-dy*8+py*width*.20f);
+            body.lineTo(cx+dx*(length*.23f)+px*width*.51f,cy+dy*(length*.23f)+py*width*.51f);
+            body.lineTo(cx+dx*(length*.83f)+px*width*.30f,cy+dy*(length*.83f)+py*width*.30f);
+            body.lineTo(cx+dx*length,cy+dy*length);
+            body.lineTo(cx+dx*(length*.83f)-px*width*.30f,cy+dy*(length*.83f)-py*width*.30f);
+            body.lineTo(cx+dx*(length*.23f)-px*width*.51f,cy+dy*(length*.23f)-py*width*.51f);
+            body.lineTo(cx-dx*8-px*width*.20f,cy-dy*8-py*width*.20f);
+            body.close();
             p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.FILL);
-            p.setColor(Color.argb(90,0,0,0));c.save();c.translate(.6f,.9f);c.drawPath(shape,p);c.restore();
-            p.setColor(color);c.drawPath(shape,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.45f);
-            p.setColor(Color.argb(155,255,255,255));c.drawPath(shape,p);
+            p.setColor(Color.argb(100,0,0,0));
+            c.save();c.translate(.55f,.75f);c.drawPath(body,p);c.restore();
+            p.setColor(col("#DDE8F3"));c.drawPath(body,p);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.55f);p.setColor(col("#FFFFFF"));c.drawPath(body,p);
             p.setStyle(Paint.Style.FILL);
+            // Narrow inset runs along the leading two-thirds, like design option #2.
+            android.graphics.Path inset=new android.graphics.Path();
+            float a=length*.32f,b=length*.79f;
+            inset.moveTo(cx+dx*a+px*width*.16f,cy+dy*a+py*width*.16f);
+            inset.lineTo(cx+dx*b+px*width*.10f,cy+dy*b+py*width*.10f);
+            inset.lineTo(cx+dx*(b+2),cy+dy*(b+2));
+            inset.lineTo(cx+dx*b-px*width*.10f,cy+dy*b-py*width*.10f);
+            inset.lineTo(cx+dx*a-px*width*.16f,cy+dy*a-py*width*.16f);
+            inset.close();
+            p.setColor(color);c.drawPath(inset,p);
         }
         void secondsNeedle(float cx,float cy,float angle,int color){
             float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
@@ -1017,15 +1031,16 @@ public class MainActivity extends Activity {
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
             // Corrected from real head-unit photo: the previous pivot was right/below dial center.
             // Each master artwork has its own printed dial center (measured from 800x480 source).
-            float cx=day?237.5f:232.5f,cy=appearance==2?147.5f:152.5f;
+            // Carbon and Electric share one dial geometry; Pearl Day is calibrated separately.
+            float cx=day?236.0f:232.0f,cy=day?153.0f:149.0f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
                 // Do NOT repaint the clock dial or its printed numerals.
-                int handColor=day?col("#E5F4FF"):Color.WHITE;
+                int handColor=day?col("#148BD0"):appearance==2?col("#FF495E"):col("#18CAFF");
                 // Tapered premium hands with subtle drop shadow and metal hub.
-                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),51,7.0f,handColor);
-                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),76,4.5f,handColor);
+                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),day?48f:46f,day?8.2f:7.6f,handColor);
+                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),day?72f:69f,day?6.0f:5.6f,handColor);
                 secondsNeedle(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),day?col("#0877B9"):appearance==2?col("#FF5B64"):col("#24CFFF"));
                 fill(col("#142A3A"));c.drawCircle(cx,cy,5.2f,p);
                 fill(day?col("#268BC2"):appearance==2?col("#E94C57"):col("#5DEAFF"));c.drawCircle(cx,cy,3.3f,p);

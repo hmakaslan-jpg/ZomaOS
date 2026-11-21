@@ -544,7 +544,7 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||keyCode==KeyEvent.KEYCODE_HEADSETHOOK){if(localPlayer!=null){togglePlayback();return true;}}
         return super.onKeyDown(keyCode,event);
     }
-    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();if(n==2)chooseCarbonGauge();}}).setNegativeButton("Cancel",null).show();}
+    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
@@ -970,11 +970,7 @@ public class MainActivity extends Activity {
             shape.lineTo(cx+dx*(length-8)-px*width*.47f,cy+dy*(length-8)-py*width*.47f);
             shape.lineTo(cx-dx*9-px*width*.36f,cy-dy*9-py*width*.36f);
             shape.close();
-            p.reset();p.setAntiAlias(true);p.setColor(Color.argb(115,0,0,0));
-            c.save();c.translate(1f,1.5f);c.drawPath(shape,p);c.restore();
-            p.setColor(color);c.drawPath(shape,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.7f);
-            p.setColor(Color.argb(155,255,255,255));c.drawPath(shape,p);
+            p.reset();p.setAntiAlias(true);p.setColor(color);c.drawPath(shape,p);
             p.setStyle(Paint.Style.FILL);
         }
         void drawMasterV15(){
@@ -993,11 +989,11 @@ public class MainActivity extends Activity {
                 // Do NOT repaint the clock dial or its printed numerals.
                 int handColor=day?col("#E5F4FF"):Color.WHITE;
                 // Tapered premium hands with subtle drop shadow and metal hub.
-                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),49,9,handColor);
-                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),70,6,handColor);
-                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),77,1.8f,accent);
-                fill(col("#233748"));c.drawCircle(cx,cy,7,p);
-                fill(col("#EAF6FF"));c.drawCircle(cx,cy,3.5f,p);
+                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),43,5.5f,handColor);
+                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),64,3.6f,handColor);
+                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),71,1.4f,accent);
+                fill(col("#233748"));c.drawCircle(cx,cy,4.8f,p);
+                fill(col("#EAF6FF"));c.drawCircle(cx,cy,2f,p);
             }else{
                 fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
                 centerText(speed>=0?String.valueOf(speed):"--",cx,cy+10,33,Color.WHITE,true);
@@ -1172,8 +1168,8 @@ public class MainActivity extends Activity {
                 else cycleRepeat();
                 return true;
             }
-            if(y>=28&&y<=285&&x>=105&&x<=357){chooseCarbonGauge();return true;}
-            if(y>=310&&y<=359&&x>=130&&x<200){togglePlayback();return true;}
+            if(y>=28&&y<=285&&x>=105&&x<=357){return true;}
+            if(y>=310&&y<=359&&x>=130&&x<200){if(usbMode){showUsbTracks();}else{musicHub();}return true;}
             // Do not open Settings from the decorative top status/header area.
             return true;
         }

@@ -1,0 +1,1 @@
+ZomaOS V15.8 size verification patch. Based on Clock & Apps Fix source. Workflow now explicitly verifies removal of assets/themes before Gradle and asserts no assets/themes entries in the built APK. No Java, artwork, or touch logic changed. The ZIP is source code, not an APK. Build and device testing remain necessary.

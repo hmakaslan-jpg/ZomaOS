@@ -1126,31 +1126,37 @@ public class MainActivity extends Activity {
         // Avoid the circular badge which made this button visually inconsistent.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
-            // Paint the original tile texture from a clean strip within the same tile.
-            // Feather the repair edges so no rectangular pasted patch is visible.
-            // The strip is sampled from the interior, away from the illuminated frame.
+            // Restore the baked-in engine area using BOTH clean sides of the same
+            // tile, interpolating each row's actual theme gradient. Feather edges
+            // to preserve highlights and avoid the stretched rectangular stamp.
             if(masterArtwork!=null){
                 int cropX=appearance==1?25:4;
                 float sx=(masterArtwork.getWidth()-cropX-4)/800f;
                 float sy=(masterArtwork.getHeight()-8)/480f;
                 Bitmap tile=masterArtwork;
-                Paint repair=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
-                // Overlapping narrow strips follow the tile's original vertical gradient.
-                for(int j=0;j<42;j++){
-                    float yy=401f+j;
-                    float fadeY=Math.min(1f,Math.min((j+1)/7f,(42-j)/7f));
-                    for(int i=0;i<64;i++){
-                        float xx=538f+i;
-                        float fadeX=Math.min(1f,Math.min((i+1)/9f,(64-i)/9f));
-                        float alpha=Math.min(fadeX,fadeY);
-                        if(alpha<=0)continue;
-                        int sampleX=cropX+Math.round((527f+(i%9))*sx);
-                        int sampleY=8+Math.round(yy*sy);
-                        sampleX=Math.max(0,Math.min(tile.getWidth()-1,sampleX));
-                        sampleY=Math.max(0,Math.min(tile.getHeight()-1,sampleY));
-                        repair.setColor(tile.getPixel(sampleX,sampleY));
-                        repair.setAlpha(Math.round(255f*alpha));
-                        c.drawRect(xx,yy,xx+1.05f,yy+1.05f,repair);
+                Paint repair=new Paint(Paint.ANTI_ALIAS_FLAG);
+                final int left=537,right=604,top=398,bottom=450;
+                for(int yy=top;yy<bottom;yy++){
+                    int srcY=Math.max(0,Math.min(tile.getHeight()-1,8+Math.round(yy*sy)));
+                    int leftX=Math.max(0,Math.min(tile.getWidth()-1,cropX+Math.round(524f*sx)));
+                    int rightX=Math.max(0,Math.min(tile.getWidth()-1,cropX+Math.round(614f*sx)));
+                    int lc=tile.getPixel(leftX,srcY),rc=tile.getPixel(rightX,srcY);
+                    float fy=Math.min(1f,Math.min((yy-top+1)/6f,(bottom-yy)/6f));
+                    for(int xx=left;xx<right;xx++){
+                        float t=(xx-left)/(float)(right-left);
+                        // Slightly vary the sample within clean texture strips
+                        // to retain the carbon weave without importing engine pixels.
+                        int jitter=(xx%5)-2;
+                        int sl=Math.max(0,Math.min(tile.getWidth()-1,leftX+jitter));
+                        int sr=Math.max(0,Math.min(tile.getWidth()-1,rightX+jitter));
+                        int l=tile.getPixel(sl,srcY),rr=tile.getPixel(sr,srcY);
+                        int red=Math.round(Color.red(l)*(1-t)+Color.red(rr)*t);
+                        int green=Math.round(Color.green(l)*(1-t)+Color.green(rr)*t);
+                        int blue=Math.round(Color.blue(l)*(1-t)+Color.blue(rr)*t);
+                        float fx=Math.min(1f,Math.min((xx-left+1)/7f,(right-xx)/7f));
+                        repair.setColor(Color.rgb(red,green,blue));
+                        repair.setAlpha(Math.round(255f*Math.min(fx,fy)));
+                        c.drawRect(xx,yy,xx+1,yy+1,repair);
                     }
                 }
             }

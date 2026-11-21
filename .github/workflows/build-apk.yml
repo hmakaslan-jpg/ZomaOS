@@ -30,16 +30,30 @@ jobs:
               src=original.load()
               dst=repaired.load()
               x0,x1,y0,y1=536,610,389,448
-              for y in range(y0,y1):
-                  left=[sum(src[xx,y][c] for xx in range(525,533))/8 for c in range(3)]
-                  right=[sum(src[xx,y][c] for xx in range(614,622))/8 for c in range(3)]
-                  for x in range(x0,x1):
-                      t=(x-x0)/(x1-x0)
-                      dst[x,y]=tuple(round(left[c]*(1-t)+right[c]*t) for c in range(3))
+              if theme=='pearl':
+                  # Day's brushed-silver gradient needs broad, feathered edges.
+                  # Reconstruct its interior using intact rows immediately
+                  # above and below the former OBD graphic, not a flat patch.
+                  x0,x1,y0,y1=540,606,392,444
+                  for y in range(y0,y1):
+                      v=(y-y0)/float(y1-y0)
+                      for x in range(x0,x1):
+                          top=src[x,381]
+                          bottom=src[x,454]
+                          # Smoothly interpolate the original silver shading
+                          # while preserving its horizontal color variation.
+                          dst[x,y]=tuple(round(top[c]*(1-v)+bottom[c]*v) for c in range(3))
+              else:
+                  for y in range(y0,y1):
+                      left=[sum(src[xx,y][c] for xx in range(525,533))/8 for c in range(3)]
+                      right=[sum(src[xx,y][c] for xx in range(614,622))/8 for c in range(3)]
+                      for x in range(x0,x1):
+                          t=(x-x0)/(x1-x0)
+                          dst[x,y]=tuple(round(left[c]*(1-t)+right[c]*t) for c in range(3))
               mask=Image.new('L',original.size,0)
               from PIL import ImageDraw
               ImageDraw.Draw(mask).rectangle((x0,y0,x1-1,y1-1),fill=255)
-              mask=mask.filter(ImageFilter.GaussianBlur(2.2))
+              mask=mask.filter(ImageFilter.GaussianBlur(11 if theme=='pearl' else 2.2))
               result=Image.composite(repaired,original,mask)
               result.save(path,quality=83,subsampling=2,optimize=True)
               print('Clean theme',theme,path.stat().st_size)

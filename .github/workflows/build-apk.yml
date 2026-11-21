@@ -2,7 +2,7 @@ name: ZomaOS V15.3 Clean Verified Build
 on:
   workflow_dispatch:
   push:
-    branches: [main, master, fix/apk-size-cleanup-2]
+    branches: [main, master, fix/apk-size-cleanup-2, fix/v158-clock-centering-apps]
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -15,6 +15,35 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
+      - name: Remove baked OBD symbol from the three original theme images
+        shell: bash
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 - <<'PYREPAIR'
+          from PIL import Image, ImageFilter
+          from pathlib import Path
+          root=Path('app/src/main/res/drawable-nodpi')
+          for theme in ('carbon','electric','pearl'):
+              path=root/('master_'+theme+'.jpg')
+              original=Image.open(path).convert('RGB')
+              repaired=original.copy()
+              src=original.load()
+              dst=repaired.load()
+              x0,x1,y0,y1=536,610,397,448
+              for y in range(y0,y1):
+                  left=[sum(src[xx,y][c] for xx in range(525,533))/8 for c in range(3)]
+                  right=[sum(src[xx,y][c] for xx in range(614,622))/8 for c in range(3)]
+                  for x in range(x0,x1):
+                      t=(x-x0)/(x1-x0)
+                      dst[x,y]=tuple(round(left[c]*(1-t)+right[c]*t) for c in range(3))
+              mask=Image.new('L',original.size,0)
+              from PIL import ImageDraw
+              ImageDraw.Draw(mask).rectangle((x0,y0,x1-1,y1-1),fill=255)
+              mask=mask.filter(ImageFilter.GaussianBlur(2.2))
+              result=Image.composite(repaired,original,mask)
+              result.save(path,quality=83,subsampling=2,optimize=True)
+              print('Clean theme',theme,path.stat().st_size)
+          PYREPAIR
       - name: Enforce clean source resources
         shell: bash
         run: |

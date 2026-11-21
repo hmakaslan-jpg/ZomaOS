@@ -981,7 +981,7 @@ public class MainActivity extends Activity {
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
             // Corrected from real head-unit photo: the previous pivot was right/below dial center.
-            float cx=205f,cy=136f;
+            float cx=231f,cy=151f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){

@@ -146,7 +146,7 @@ public class MainActivity extends Activity {
         super.onWindowFocusChanged(hasFocus);
         if(hasFocus)applyEdgeToEdge();
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);applyEdgeToEdge();centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard)dashboard.setClickable(true);;startMusicDiscovery();try{restoreUsbFolder();}catch(Throwable err){android.util.Log.e("ZomaOS","USB restore failed during launcher startup",err);}resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);applyEdgeToEdge();centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);dashboard.setClickable(true);startMusicDiscovery();try{restoreUsbFolder();}catch(Throwable err){android.util.Log.e("ZomaOS","USB restore failed during launcher startup",err);}resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
     // Load only the selected scene and eight small themed assets. No GIF or frame loop.
     void recycleN14(Bitmap b){if(b!=null&&!b.isRecycled())b.recycle();}
     void loadN14Skin(){
@@ -1020,6 +1020,13 @@ public class MainActivity extends Activity {
             centerText(localPlayer!=null&&localPlayer.isPlaying()?"Ⅱ":"▶",622,340,24,accent,true);
             centerText("▶|",697,340,21,fg,true);
             drawOriginalFiveDockApps(day,accent);
+            if(pressedDock>=0&&pressedDock<5){
+                float l=dockEdges[pressedDock]+5,r=dockEdges[pressedDock+1]-5;
+                p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(2f);p.setColor(accent);
+                c.drawRoundRect(new RectF(l,386,r,468),8,8,p);
+                p.setStyle(Paint.Style.FILL);
+            }
         }
 
         // Preserve all FIVE baked artwork tiles. Replace only the OBD engine graphic
@@ -1042,12 +1049,13 @@ public class MainActivity extends Activity {
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();
             int a=e.getActionMasked();
             if(a==MotionEvent.ACTION_DOWN){
+                android.util.Log.d("ZomaTouch", "DOWN x="+x+" y="+y);
                 // A fresh gesture must not inherit an old pending long-press.
                 if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
                 pendingDockLongPress=null;pressedDock=-1;dockLongPressed=false;draggingSeek=false;
                 touchStarted=true;downX=x;downY=y;
                 if(y>=382&&y<=472&&x>=70&&x<787){
-                    pressedDock=masterDockIndex(x);dockLongPressed=false;
+                    pressedDock=masterDockIndex(x);dockLongPressed=false;invalidate();
                     final int idx=pressedDock;
                     if(idx>=0&&idx<5){pendingDockLongPress=new Runnable(){public void run(){if(pressedDock==idx){dockLongPressed=true;editDock(idx);}}};
                         dockHandler.postDelayed(pendingDockLongPress,650);}
@@ -1057,8 +1065,9 @@ public class MainActivity extends Activity {
                 return true;
             }
             if(a==MotionEvent.ACTION_CANCEL){
+                android.util.Log.w("ZomaTouch", "CANCEL dock="+pressedDock+" x="+x+" y="+y);
                 if(pendingDockLongPress!=null)dockHandler.removeCallbacks(pendingDockLongPress);
-                pendingDockLongPress=null;pressedDock=-1;draggingSeek=false;touchStarted=false;return true;
+                pendingDockLongPress=null;pressedDock=-1;draggingSeek=false;touchStarted=false;invalidate();return true;
             }
             if(a==MotionEvent.ACTION_MOVE){
                 if(draggingSeek){seekMusic(x);return true;}
@@ -1071,16 +1080,22 @@ public class MainActivity extends Activity {
                 return true;
             }
             if(a!=MotionEvent.ACTION_UP)return true;
-            if(!touchStarted)return true;
+            if(!touchStarted){android.util.Log.w("ZomaTouch", "UP without DOWN x="+x+" y="+y);return true;}
+            android.util.Log.d("ZomaTouch", "UP x="+x+" y="+y+" dock="+pressedDock);
             touchStarted=false;
             if(pendingDockLongPress!=null){dockHandler.removeCallbacks(pendingDockLongPress);pendingDockLongPress=null;}
             if(pressedDock>=0){
-                int i=pressedDock;pressedDock=-1;
+                int i=pressedDock;pressedDock=-1;invalidate();
                 // Never trigger a tile when the user drags far away or into another tile.
                 boolean withinTile=x>=dockEdges[i]-DOCK_RELEASE_SLOP
                     &&x<=dockEdges[i+1]+DOCK_RELEASE_SLOP
                     &&y>=382-DOCK_RELEASE_SLOP&&y<=472+DOCK_RELEASE_SLOP;
-                if(!dockLongPressed&&withinTile)activateDock(i);
+                if(!dockLongPressed&&withinTile){
+                    android.util.Log.i("ZomaTouch", "ACTIVATE dock="+i);
+                    activateDock(i);
+                }else{
+                    android.util.Log.w("ZomaTouch", "SKIPPED dock="+i+" long="+dockLongPressed+" within="+withinTile);
+                }
                 dockLongPressed=false;return true;
             }
             if(draggingSeek){draggingSeek=false;seekMusic(x);return true;}

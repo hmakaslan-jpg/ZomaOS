@@ -1126,19 +1126,33 @@ public class MainActivity extends Activity {
         // Avoid the circular badge which made this button visually inconsistent.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
-            // The master JPG already contains an engine symbol on the fourth tile.
-            // Rebuild its center from a nearby clean area of the SAME tile, then
-            // paint the apps glyph. Keep the original glowing tile border intact.
+            // Paint the original tile texture from a clean strip within the same tile.
+            // Feather the repair edges so no rectangular pasted patch is visible.
+            // The strip is sampled from the interior, away from the illuminated frame.
             if(masterArtwork!=null){
                 int cropX=appearance==1?25:4;
                 float sx=(masterArtwork.getWidth()-cropX-4)/800f;
                 float sy=(masterArtwork.getHeight()-8)/480f;
-                Rect source=new Rect(
-                    cropX+Math.round(509f*sx),8+Math.round(401f*sy),
-                    cropX+Math.round(519f*sx),8+Math.round(447f*sy));
-                RectF target=new RectF(535f,400f,604f,448f);
-                p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);p.setColor(Color.WHITE);
-                c.drawBitmap(masterArtwork,source,target,p);
+                Bitmap tile=masterArtwork;
+                Paint repair=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
+                // Overlapping narrow strips follow the tile's original vertical gradient.
+                for(int j=0;j<42;j++){
+                    float yy=401f+j;
+                    float fadeY=Math.min(1f,Math.min((j+1)/7f,(42-j)/7f));
+                    for(int i=0;i<64;i++){
+                        float xx=538f+i;
+                        float fadeX=Math.min(1f,Math.min((i+1)/9f,(64-i)/9f));
+                        float alpha=Math.min(fadeX,fadeY);
+                        if(alpha<=0)continue;
+                        int sampleX=cropX+Math.round((527f+(i%9))*sx);
+                        int sampleY=8+Math.round(yy*sy);
+                        sampleX=Math.max(0,Math.min(tile.getWidth()-1,sampleX));
+                        sampleY=Math.max(0,Math.min(tile.getHeight()-1,sampleY));
+                        repair.setColor(tile.getPixel(sampleX,sampleY));
+                        repair.setAlpha(Math.round(255f*alpha));
+                        c.drawRect(xx,yy,xx+1.05f,yy+1.05f,repair);
+                    }
+                }
             }
             int color=day?col("#1679C4"):col("#C5EDFF");
             p.reset();p.setAntiAlias(true);p.setColor(color);

@@ -544,7 +544,7 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||keyCode==KeyEvent.KEYCODE_HEADSETHOOK){if(localPlayer!=null){togglePlayback();return true;}}
         return super.onKeyDown(keyCode,event);
     }
-    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();if(n==2)chooseCarbonGauge();}}).setNegativeButton("Cancel",null).show();}
+    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
@@ -970,11 +970,7 @@ public class MainActivity extends Activity {
             shape.lineTo(cx+dx*(length-8)-px*width*.47f,cy+dy*(length-8)-py*width*.47f);
             shape.lineTo(cx-dx*9-px*width*.36f,cy-dy*9-py*width*.36f);
             shape.close();
-            p.reset();p.setAntiAlias(true);p.setColor(Color.argb(115,0,0,0));
-            c.save();c.translate(1f,1.5f);c.drawPath(shape,p);c.restore();
-            p.setColor(color);c.drawPath(shape,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.7f);
-            p.setColor(Color.argb(155,255,255,255));c.drawPath(shape,p);
+            p.reset();p.setAntiAlias(true);p.setColor(color);c.drawPath(shape,p);
             p.setStyle(Paint.Style.FILL);
         }
         void drawMasterV15(){
@@ -984,20 +980,19 @@ public class MainActivity extends Activity {
             int muted=day?col("#456178"):col("#AEC6D8");
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
-            // The baked 800x480 dial spans roughly x=112..350, y=11..291.
-            // Its center is (231,151); keep the pivot shared by all three hands.
-            float cx=231f,cy=151f;
+            // Corrected from real head-unit photo: the previous pivot was right/below dial center.
+            float cx=220f,cy=144f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
                 // Do NOT repaint the clock dial or its printed numerals.
                 int handColor=day?col("#E5F4FF"):Color.WHITE;
                 // Tapered premium hands with subtle drop shadow and metal hub.
-                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),49,9,handColor);
-                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),70,6,handColor);
-                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),77,1.8f,accent);
-                fill(col("#233748"));c.drawCircle(cx,cy,7,p);
-                fill(col("#EAF6FF"));c.drawCircle(cx,cy,3.5f,p);
+                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),43,5.5f,handColor);
+                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),64,3.6f,handColor);
+                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),71,1.4f,accent);
+                fill(col("#233748"));c.drawCircle(cx,cy,4.8f,p);
+                fill(col("#EAF6FF"));c.drawCircle(cx,cy,2f,p);
             }else{
                 fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
                 centerText(speed>=0?String.valueOf(speed):"--",cx,cy+10,33,Color.WHITE,true);
@@ -1058,40 +1053,57 @@ public class MainActivity extends Activity {
             }
         }
 
+        // Compact glass media controls; the music panel remains readable on all three skins.
         void musicCircle(float x,float y,float r,String glyph,boolean active,boolean day,int accent){
-            fill(day?col("#D5E5F2"):col("#1A324A"));c.drawCircle(x,y,r,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(active?2.4f:1.3f);
-            p.setColor(active?accent:(day?col("#7093AD"):col("#789AB2")));c.drawCircle(x,y,r-1,p);
+            float size=r*1.65f;
+            p.reset();p.setAntiAlias(true);
+            p.setColor(day?Color.argb(78,255,255,255):Color.argb(100,12,29,46));
+            c.drawRoundRect(new RectF(x-size/2,y-size/2,x+size/2,y+size/2),7f,7f,p);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(active?1.7f:1f);
+            p.setColor(active?accent:(day?col("#8EAEC4"):col("#54738C")));
+            c.drawRoundRect(new RectF(x-size/2,y-size/2,x+size/2,y+size/2),7f,7f,p);
             p.setStyle(Paint.Style.FILL);
-            centerText(glyph,x,y+5,r>19?19:r>16?16:14,active?accent:(day?col("#244963"):Color.WHITE),true);
+            int ink=active?accent:(day?col("#28516F"):col("#E7F5FF"));
+            if(x>615&&x<649&&localPlayer!=null&&localPlayer.isPlaying()){
+                float pulse=(float)(0.75+0.25*Math.sin(android.os.SystemClock.uptimeMillis()/230.0));
+                ink=Color.argb((int)(220+35*pulse),Color.red(ink),Color.green(ink),Color.blue(ink));
+            }
+            centerText(glyph,x,y+5,r>19?18:r>16?15:13,ink,true);
         }
 
-        // The fourth tile has an engine printed in the JPEG itself. Cover only
-        // that emblem with a dark metallic circular medallion (no square panel),
-        // then draw a vector apps grid inside it. Keep the original tile border.
+        // The source JPEG has an old engine badge in this tile. Reuse a clean
+        // vertical strip from the SAME tile to conceal it without a circle or panel.
+        // The four Apps squares are then drawn directly on the restored tile surface.
+        // Repaint the complete Apps tile as a single beveled surface.
+        // Never stretch a thin photo strip: it creates the visible seam seen on device.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
-            int base=day?col("#D4E4EE"):col("#102B43");
-            int rim=day?col("#537F9E"):col("#45C8FA");
+            android.graphics.Path tile=new android.graphics.Path();
+            tile.moveTo(497,385);tile.lineTo(644,385);tile.lineTo(660,398);
+            tile.lineTo(648,462);tile.lineTo(486,462);tile.lineTo(474,450);
+            tile.lineTo(486,400);tile.close();
             p.reset();p.setAntiAlias(true);
-            p.setShader(new RadialGradient(x,y,40f,
-                new int[]{base,day?col("#AEC8D9"):col("#071827")},
+            p.setShader(new android.graphics.LinearGradient(484,387,644,462,
+                day?new int[]{col("#F2F8FB"),col("#B8D1E2"),col("#E2F0F7")}:new int[]{col("#344A61"),col("#172A40"),col("#2E526A")},
                 null,Shader.TileMode.CLAMP));
-            c.drawCircle(x,y,39,p);p.setShader(null);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2f);p.setColor(rim);
-            c.drawCircle(x,y,37,p);p.setStyle(Paint.Style.FILL);
-            p.setColor(day?col("#226A9A"):col("#C5EDFF"));
+            c.drawPath(tile,p);p.setShader(null);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(3f);
+            p.setColor(day?col("#DDF4FF"):col("#A4EFFF"));c.drawPath(tile,p);
+            p.setStrokeWidth(1.2f);p.setColor(day?col("#639AB9"):col("#2B9DD1"));
+            c.drawLine(496,391,640,391,p);c.drawLine(489,455,645,455,p);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(day?col("#247BAE"):col("#AEEBFF"));
             for(int row=0;row<2;row++)for(int col=0;col<2;col++){
-                float l=x-15+col*18,t=y-18+row*18;
-                c.drawRoundRect(new RectF(l,t,l+12,t+12),2,2,p);
+                float l=x-15+col*18,t=y-21+row*18;
+                c.drawRoundRect(new RectF(l,t,l+13,t+13),2.5f,2.5f,p);
             }
-            centerText("APPS",x,y+29,9,day?col("#254C68"):col("#E0F6FF"),true);
+            centerText("APPS",x,y+29,10,day?col("#2C648A"):col("#DDF7FF"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}
         @Override protected void onDraw(Canvas canvas){
             c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);
-            drawV11();c.restore();postInvalidateDelayed(1000); // 1 FPS for clock seconds; no 30/60 FPS continuous scene animation
+            drawV11();c.restore();postInvalidateDelayed(localPlayer!=null&&localPlayer.isPlaying()?120:1000); // Animate active music controls smoothly; save CPU when idle
         }
         @Override public boolean onTouchEvent(MotionEvent e){
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();
@@ -1172,8 +1184,8 @@ public class MainActivity extends Activity {
                 else cycleRepeat();
                 return true;
             }
-            if(y>=28&&y<=285&&x>=105&&x<=357){chooseCarbonGauge();return true;}
-            if(y>=310&&y<=359&&x>=130&&x<200){togglePlayback();return true;}
+            if(y>=28&&y<=285&&x>=105&&x<=357){return true;}
+            if(y>=310&&y<=359&&x>=130&&x<200){if(usbMode){showUsbTracks();}else{musicHub();}return true;}
             // Do not open Settings from the decorative top status/header area.
             return true;
         }

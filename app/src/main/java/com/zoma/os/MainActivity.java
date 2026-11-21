@@ -544,7 +544,7 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||keyCode==KeyEvent.KEYCODE_HEADSETHOOK){if(localPlayer!=null){togglePlayback();return true;}}
         return super.onKeyDown(keyCode,event);
     }
-    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();if(n==2)chooseCarbonGauge();}}).setNegativeButton("Cancel",null).show();}
+    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
@@ -960,21 +960,29 @@ public class MainActivity extends Activity {
         // The master images already contain a clean numbered clock face.
         // A true symmetric tapered hand. The old triangle used only a 0.7px tip
         // and made the hour and minute hands appear like thin needles.
+        // Balanced polished steel watch hands, with the exact same shared pivot.
         void premiumHand(float cx,float cy,float angle,float length,float width,int color){
             float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
             float px=-dy,py=dx;
             android.graphics.Path shape=new android.graphics.Path();
-            shape.moveTo(cx-dx*9+px*width*.36f,cy-dy*9+py*width*.36f);
-            shape.lineTo(cx+dx*(length-8)+px*width*.47f,cy+dy*(length-8)+py*width*.47f);
+            shape.moveTo(cx-dx*8+px*width*.38f,cy-dy*8+py*width*.38f);
+            shape.lineTo(cx+dx*(length*.76f)+px*width*.46f,cy+dy*(length*.76f)+py*width*.46f);
             shape.lineTo(cx+dx*length,cy+dy*length);
-            shape.lineTo(cx+dx*(length-8)-px*width*.47f,cy+dy*(length-8)-py*width*.47f);
-            shape.lineTo(cx-dx*9-px*width*.36f,cy-dy*9-py*width*.36f);
+            shape.lineTo(cx+dx*(length*.76f)-px*width*.46f,cy+dy*(length*.76f)-py*width*.46f);
+            shape.lineTo(cx-dx*8-px*width*.38f,cy-dy*8-py*width*.38f);
             shape.close();
-            p.reset();p.setAntiAlias(true);p.setColor(Color.argb(115,0,0,0));
-            c.save();c.translate(1f,1.5f);c.drawPath(shape,p);c.restore();
+            p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.argb(90,0,0,0));c.save();c.translate(.6f,.9f);c.drawPath(shape,p);c.restore();
             p.setColor(color);c.drawPath(shape,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.7f);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.45f);
             p.setColor(Color.argb(155,255,255,255));c.drawPath(shape,p);
+            p.setStyle(Paint.Style.FILL);
+        }
+        void secondsNeedle(float cx,float cy,float angle,int color){
+            float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
+            p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeWidth(1.35f);p.setColor(color);
+            c.drawLine(cx-dx*15,cy-dy*15,cx+dx*77,cy+dy*77,p);
             p.setStyle(Paint.Style.FILL);
         }
         void drawMasterV15(){
@@ -984,20 +992,19 @@ public class MainActivity extends Activity {
             int muted=day?col("#456178"):col("#AEC6D8");
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
-            // The baked 800x480 dial spans roughly x=112..350, y=11..291.
-            // Its center is (231,151); keep the pivot shared by all three hands.
-            float cx=231f,cy=151f;
+            // Corrected from real head-unit photo: the previous pivot was right/below dial center.
+            float cx=214f,cy=146f; // Calibrated against photographed dial center on 800x480 master artwork
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
                 // Do NOT repaint the clock dial or its printed numerals.
                 int handColor=day?col("#E5F4FF"):Color.WHITE;
                 // Tapered premium hands with subtle drop shadow and metal hub.
-                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),49,9,handColor);
-                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),70,6,handColor);
-                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),77,1.8f,accent);
-                fill(col("#233748"));c.drawCircle(cx,cy,7,p);
-                fill(col("#EAF6FF"));c.drawCircle(cx,cy,3.5f,p);
+                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),47,6.5f,handColor);
+                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),69,4.1f,handColor);
+                secondsNeedle(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),col("#28BFFF"));
+                fill(col("#15283B"));c.drawCircle(cx,cy,5.5f,p);
+                fill(col("#DCECF6"));c.drawCircle(cx,cy,2.3f,p);
             }else{
                 fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
                 centerText(speed>=0?String.valueOf(speed):"--",cx,cy+10,33,Color.WHITE,true);
@@ -1058,40 +1065,52 @@ public class MainActivity extends Activity {
             }
         }
 
+        // Compact glass media controls; the music panel remains readable on all three skins.
         void musicCircle(float x,float y,float r,String glyph,boolean active,boolean day,int accent){
-            fill(day?col("#D5E5F2"):col("#1A324A"));c.drawCircle(x,y,r,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(active?2.4f:1.3f);
-            p.setColor(active?accent:(day?col("#7093AD"):col("#789AB2")));c.drawCircle(x,y,r-1,p);
+            float size=r*1.65f;
+            p.reset();p.setAntiAlias(true);
+            p.setColor(day?Color.argb(78,255,255,255):Color.argb(100,12,29,46));
+            c.drawRoundRect(new RectF(x-size/2,y-size/2,x+size/2,y+size/2),7f,7f,p);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(active?1.7f:1f);
+            p.setColor(active?accent:(day?col("#8EAEC4"):col("#54738C")));
+            c.drawRoundRect(new RectF(x-size/2,y-size/2,x+size/2,y+size/2),7f,7f,p);
             p.setStyle(Paint.Style.FILL);
-            centerText(glyph,x,y+5,r>19?19:r>16?16:14,active?accent:(day?col("#244963"):Color.WHITE),true);
+            int ink=active?accent:(day?col("#28516F"):col("#E7F5FF"));
+            if(x>615&&x<649&&localPlayer!=null&&localPlayer.isPlaying()){
+                float pulse=(float)(0.75+0.25*Math.sin(android.os.SystemClock.uptimeMillis()/230.0));
+                ink=Color.argb((int)(220+35*pulse),Color.red(ink),Color.green(ink),Color.blue(ink));
+            }
+            centerText(glyph,x,y+5,r>19?18:r>16?15:13,ink,true);
         }
 
-        // The fourth tile has an engine printed in the JPEG itself. Cover only
-        // that emblem with a dark metallic circular medallion (no square panel),
-        // then draw a vector apps grid inside it. Keep the original tile border.
+        // Conceal the engine badge baked into the JPEG with a soft colour-matched
+        // surface, not a circle and not a horizontally stretched 9-pixel strip.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
-            int base=day?col("#D4E4EE"):col("#102B43");
-            int rim=day?col("#537F9E"):col("#45C8FA");
+            int top=day?col("#D9E6ED"):appearance==2?col("#273A4B"):col("#B5C8D7");
+            int bottom=day?col("#A7C2D0"):appearance==2?col("#233443"):col("#819FB4");
             p.reset();p.setAntiAlias(true);
-            p.setShader(new RadialGradient(x,y,40f,
-                new int[]{base,day?col("#AEC8D9"):col("#071827")},
-                null,Shader.TileMode.CLAMP));
-            c.drawCircle(x,y,39,p);p.setShader(null);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2f);p.setColor(rim);
-            c.drawCircle(x,y,37,p);p.setStyle(Paint.Style.FILL);
-            p.setColor(day?col("#226A9A"):col("#C5EDFF"));
-            for(int row=0;row<2;row++)for(int col=0;col<2;col++){
-                float l=x-15+col*18,t=y-18+row*18;
-                c.drawRoundRect(new RectF(l,t,l+12,t+12),2,2,p);
+            // Feathered perimeter avoids a visible rectangular patch on the artwork.
+            for(int edge=9;edge>=0;edge--){
+                p.setShader(new LinearGradient(0,391,0,458,
+                    new int[]{top,bottom},null,Shader.TileMode.CLAMP));
+                p.setAlpha(edge==0?255:Math.max(12,55-edge*5));
+                c.drawRoundRect(new RectF(532-edge,395-edge,606+edge,454+edge),
+                    9+edge,9+edge,p);
             }
-            centerText("APPS",x,y+29,9,day?col("#254C68"):col("#E0F6FF"),true);
+            p.setShader(null);p.setAlpha(255);
+            p.setColor(day?col("#247BB6"):appearance==2?col("#D5F4FF"):col("#278EC8"));
+            for(int row=0;row<2;row++)for(int col=0;col<2;col++){
+                float l=x-15+col*18,t=y-20+row*18;
+                c.drawRoundRect(new RectF(l,t,l+13,t+13),2,2,p);
+            }
+            centerText("APPS",x,y+27,9,day?col("#31556D"):appearance==2?col("#E5F8FF"):col("#34607B"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}
         @Override protected void onDraw(Canvas canvas){
             c=canvas;c.save();c.scale(getWidth()/800f,getHeight()/480f);
-            drawV11();c.restore();postInvalidateDelayed(1000); // 1 FPS for clock seconds; no 30/60 FPS continuous scene animation
+            drawV11();c.restore();postInvalidateDelayed(localPlayer!=null&&localPlayer.isPlaying()?120:1000); // Animate active music controls smoothly; save CPU when idle
         }
         @Override public boolean onTouchEvent(MotionEvent e){
             float x=e.getX()*800f/getWidth(),y=e.getY()*480f/getHeight();
@@ -1172,8 +1191,8 @@ public class MainActivity extends Activity {
                 else cycleRepeat();
                 return true;
             }
-            if(y>=28&&y<=285&&x>=105&&x<=357){chooseCarbonGauge();return true;}
-            if(y>=310&&y<=359&&x>=130&&x<200){togglePlayback();return true;}
+            if(y>=28&&y<=285&&x>=105&&x<=357){return true;}
+            if(y>=310&&y<=359&&x>=130&&x<200){if(usbMode){showUsbTracks();}else{musicHub();}return true;}
             // Do not open Settings from the decorative top status/header area.
             return true;
         }

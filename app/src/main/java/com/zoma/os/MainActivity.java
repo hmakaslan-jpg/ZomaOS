@@ -597,7 +597,7 @@ public class MainActivity extends Activity {
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
-        final String[] items={"Appearance • Night / Daylight", "Clock • 12 / 24 hour", "Analog clock • Show / hide", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
+        final String[] items={"Appearance • Night / Daylight", "Clock • 12 / 24 hour", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
         final Dialog dialog=new Dialog(this);dialog.setTitle("ZomaOS V15.8 • Settings");
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(16,10,16,10);panel.setBackgroundColor(Color.rgb(16,39,59));
         TextView heading=new TextView(this);heading.setText("ZOMAOS V15.8   /   SETTINGS");heading.setTextSize(22);heading.setTextColor(Color.WHITE);heading.setPadding(12,8,8,14);panel.addView(heading);
@@ -607,13 +607,12 @@ public class MainActivity extends Activity {
         Button close=new Button(this);close.setText("BACK TO DASHBOARD");panel.addView(close);close.setOnClickListener(new View.OnClickListener(){public void onClick(View v){dialog.dismiss();}});
         list.setOnItemClickListener(new AdapterView.OnItemClickListener(){public void onItemClick(AdapterView<?> p,View v,int n,long id){dialog.dismiss();switch(n){
             case 0:chooseAppearance();break;case 1:chooseClockFormat();break;
-            case 2:showAnalog=!showAnalog;getPreferences(MODE_PRIVATE).edit().putBoolean("showAnalog",showAnalog).apply();dashboard.invalidate();break;
-            case 3:chooseUsbRoot();break;case 4:chooseAnyMusicApp();break;case 5:showAppCenter();break;
-            case 6:maintenanceCenter();break;case 7:toggleOilReminder();break;
-            case 8:maintenanceInput("Oil change interval (km)","oil_interval",getPreferences(MODE_PRIVATE).getInt("oil_interval",7000));break;
-            case 9:showMode();break;case 10:launch(new String[]{},"settings");break;
+            case 2:chooseUsbRoot();break;case 3:chooseAnyMusicApp();break;case 4:showAppCenter();break;
+            case 5:maintenanceCenter();break;case 6:toggleOilReminder();break;
+            case 7:maintenanceInput("Oil change interval (km)","oil_interval",getPreferences(MODE_PRIVATE).getInt("oil_interval",7000));break;
+            case 8:showMode();break;case 9:launch(new String[]{},"settings");break;
 
-            case 11:new AlertDialog.Builder(MainActivity.this).setTitle("Restore defaults?").setPositiveButton("Reset",new DialogInterface.OnClickListener(){public void onClick(DialogInterface a,int b){getPreferences(MODE_PRIVATE).edit().clear().apply();theme=0;showAnalog=true;centerMode=0;appearance=0;clock12=false;dashboard.invalidate();}}).setNegativeButton("Cancel",null).show();break;
+            case 10:new AlertDialog.Builder(MainActivity.this).setTitle("Restore defaults?").setPositiveButton("Reset",new DialogInterface.OnClickListener(){public void onClick(DialogInterface a,int b){getPreferences(MODE_PRIVATE).edit().clear().apply();theme=0;showAnalog=true;centerMode=0;appearance=0;clock12=false;dashboard.invalidate();}}).setNegativeButton("Cancel",null).show();break;
         }}});
         dialog.setContentView(panel);dialog.show();if(dialog.getWindow()!=null)dialog.getWindow().setLayout(-1,-1);
     }

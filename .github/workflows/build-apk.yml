@@ -2,7 +2,7 @@ name: ZomaOS V15.3 Clean Verified Build
 on:
   workflow_dispatch:
   push:
-    branches: [main, master]
+    branches: [main, master, fix/apk-size-cleanup-2]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,11 +33,9 @@ jobs:
               if p.is_dir() and not any(p.iterdir()):p.rmdir()
           themes=root/'assets'/'themes'
           if themes.exists():
-              allowed_themes={'master_carbon.jpg','master_electric.jpg','master_pearl.jpg'}
-              for p in themes.iterdir():
-                  if p.is_file() and p.name not in allowed_themes:
-                      print('Removing unused theme:',p)
-                      p.unlink()
+              print('Removing duplicate theme assets:', themes)
+              shutil.rmtree(themes)
+          assert not themes.exists(), 'Duplicate theme directory still exists'
           java=root/'java'
           for p in java.rglob('*.java'):
               if p.relative_to(java).as_posix()!='com/zoma/os/MainActivity.java':
@@ -57,10 +55,12 @@ jobs:
           apk='app/build/outputs/apk/debug/app-debug.apk'
           allowed={'master_carbon.jpg','master_electric.jpg','master_pearl.jpg','zoma_icon.png'}
           with zipfile.ZipFile(apk) as z:
-              imgs=[n for n in z.namelist() if n.startswith('res/') and n.lower().endswith(('.png','.jpg','.jpeg','.webp'))]
+              imgs=[n for n in z.namelist() if n.lower().endswith(('.png','.jpg','.jpeg','.webp'))]
               names={n.rsplit('/',1)[-1] for n in imgs}
-              print('APK images:',imgs)
-              assert names==allowed and len(imgs)==4, f'APK contains unexpected images: {imgs}'
+              print('APK images:', imgs)
+              assert names==allowed and len(imgs)==4, f'Unexpected or duplicate APK images: {imgs}'
+              assert not any(n.startswith('assets/themes/') for n in z.namelist()), 'Duplicate theme assets found'
+          print('APK bytes:', __import__('os').path.getsize(apk))
           PYVERIFY
       - uses: actions/upload-artifact@v4
         with:

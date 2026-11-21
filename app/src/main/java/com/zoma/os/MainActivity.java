@@ -1134,9 +1134,9 @@ public class MainActivity extends Activity {
                 float sx=(masterArtwork.getWidth()-cropX-4)/800f;
                 float sy=(masterArtwork.getHeight()-8)/480f;
                 Rect source=new Rect(
-                    cropX+Math.round(523f*sx),8+Math.round(400f*sy),
-                    cropX+Math.round(539f*sx),8+Math.round(448f*sy));
-                RectF target=new RectF(535f,399f,604f,449f);
+                    cropX+Math.round(509f*sx),8+Math.round(401f*sy),
+                    cropX+Math.round(519f*sx),8+Math.round(447f*sy));
+                RectF target=new RectF(535f,400f,604f,448f);
                 p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);p.setColor(Color.WHITE);
                 c.drawBitmap(masterArtwork,source,target,p);
             }
@@ -1233,7 +1233,7 @@ public class MainActivity extends Activity {
                 return true;
             }
             if(y>=28&&y<=285&&x>=105&&x<=357){return true;}
-            if(y>=310&&y<=359&&x>=130&&x<200){togglePlayback();return true;}
+            if(y>=310&&y<=359&&x>=130&&x<521){openRememberedUsb();return true;}
             // Do not open Settings from the decorative top status/header area.
             return true;
         }

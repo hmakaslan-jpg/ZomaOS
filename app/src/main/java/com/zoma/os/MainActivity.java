@@ -960,17 +960,29 @@ public class MainActivity extends Activity {
         // The master images already contain a clean numbered clock face.
         // A true symmetric tapered hand. The old triangle used only a 0.7px tip
         // and made the hour and minute hands appear like thin needles.
+        // Balanced polished steel watch hands, with the exact same shared pivot.
         void premiumHand(float cx,float cy,float angle,float length,float width,int color){
             float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
             float px=-dy,py=dx;
             android.graphics.Path shape=new android.graphics.Path();
-            shape.moveTo(cx-dx*9+px*width*.36f,cy-dy*9+py*width*.36f);
-            shape.lineTo(cx+dx*(length-8)+px*width*.47f,cy+dy*(length-8)+py*width*.47f);
+            shape.moveTo(cx-dx*8+px*width*.38f,cy-dy*8+py*width*.38f);
+            shape.lineTo(cx+dx*(length*.76f)+px*width*.46f,cy+dy*(length*.76f)+py*width*.46f);
             shape.lineTo(cx+dx*length,cy+dy*length);
-            shape.lineTo(cx+dx*(length-8)-px*width*.47f,cy+dy*(length-8)-py*width*.47f);
-            shape.lineTo(cx-dx*9-px*width*.36f,cy-dy*9-py*width*.36f);
+            shape.lineTo(cx+dx*(length*.76f)-px*width*.46f,cy+dy*(length*.76f)-py*width*.46f);
+            shape.lineTo(cx-dx*8-px*width*.38f,cy-dy*8-py*width*.38f);
             shape.close();
-            p.reset();p.setAntiAlias(true);p.setColor(color);c.drawPath(shape,p);
+            p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.argb(90,0,0,0));c.save();c.translate(.6f,.9f);c.drawPath(shape,p);c.restore();
+            p.setColor(color);c.drawPath(shape,p);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.45f);
+            p.setColor(Color.argb(155,255,255,255));c.drawPath(shape,p);
+            p.setStyle(Paint.Style.FILL);
+        }
+        void secondsNeedle(float cx,float cy,float angle,int color){
+            float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
+            p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeWidth(1.35f);p.setColor(color);
+            c.drawLine(cx-dx*15,cy-dy*15,cx+dx*77,cy+dy*77,p);
             p.setStyle(Paint.Style.FILL);
         }
         void drawMasterV15(){
@@ -988,11 +1000,11 @@ public class MainActivity extends Activity {
                 // Do NOT repaint the clock dial or its printed numerals.
                 int handColor=day?col("#E5F4FF"):Color.WHITE;
                 // Tapered premium hands with subtle drop shadow and metal hub.
-                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),43,5.5f,handColor);
-                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),64,3.6f,handColor);
-                premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),71,1.4f,accent);
-                fill(col("#233748"));c.drawCircle(cx,cy,4.8f,p);
-                fill(col("#EAF6FF"));c.drawCircle(cx,cy,2f,p);
+                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),47,6.5f,handColor);
+                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),69,4.1f,handColor);
+                secondsNeedle(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),col("#28BFFF"));
+                fill(col("#15283B"));c.drawCircle(cx,cy,5.5f,p);
+                fill(col("#DCECF6"));c.drawCircle(cx,cy,2.3f,p);
             }else{
                 fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
                 centerText(speed>=0?String.valueOf(speed):"--",cx,cy+10,33,Color.WHITE,true);
@@ -1077,34 +1089,41 @@ public class MainActivity extends Activity {
         // Preserve the original tile artwork, bevel, glow and texture.
         // Reconstruct only the old engine glyph from adjacent background pixels.
         Bitmap appsPatchCache; Bitmap appsPatchSource;
+        // Retain the factory artwork and its bevel. Blend only the engine symbol,
+        // using the adjacent pixels from the same tile with feathered edges.
         void drawOriginalFiveDockApps(boolean day,int accent){
             if(masterArtwork!=null&&!masterArtwork.isRecycled()){
-                p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);
                 if(appsPatchSource!=masterArtwork||appsPatchCache==null){
                     if(appsPatchCache!=null&&!appsPatchCache.isRecycled())appsPatchCache.recycle();
-                    appsPatchCache=android.graphics.Bitmap.createBitmap(82,57,Bitmap.Config.ARGB_8888);
+                    appsPatchCache=Bitmap.createBitmap(92,61,Bitmap.Config.ARGB_8888);
                     appsPatchSource=masterArtwork;
-                for(int yy=0;yy<57;yy++){
-                    int sy=394+yy;
-                    int left=masterArtwork.getPixel(532,sy);
-                    int right=masterArtwork.getPixel(614,sy);
-                    for(int xx=0;xx<82;xx++){
-                        float t=xx/81f;
-                        int red=(int)(Color.red(left)*(1-t)+Color.red(right)*t);
-                        int green=(int)(Color.green(left)*(1-t)+Color.green(right)*t);
-                        int blue=(int)(Color.blue(left)*(1-t)+Color.blue(right)*t);
-                        appsPatchCache.setPixel(xx,yy,Color.rgb(red,green,blue));
+                    for(int yy=0;yy<61;yy++){
+                        int sy=393+yy;
+                        int left=masterArtwork.getPixel(520,sy);
+                        int right=masterArtwork.getPixel(620,sy);
+                        for(int xx=0;xx<92;xx++){
+                            float t=xx/91f;
+                            int red=(int)(Color.red(left)*(1-t)+Color.red(right)*t);
+                            int green=(int)(Color.green(left)*(1-t)+Color.green(right)*t);
+                            int blue=(int)(Color.blue(left)*(1-t)+Color.blue(right)*t);
+                            float edgeX=Math.min(xx,91-xx)/12f;
+                            float edgeY=Math.min(yy,60-yy)/10f;
+                            float alpha=Math.min(1f,Math.max(0f,Math.min(edgeX,edgeY)));
+                            alpha=alpha*alpha*(3f-2f*alpha);
+                            appsPatchCache.setPixel(xx,yy,Color.argb((int)(255*alpha),red,green,blue));
+                        }
                     }
                 }
-                }
-                c.drawBitmap(appsPatchCache,532,394,p);
+                p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);
+                c.drawBitmap(appsPatchCache,516,393,p);
             }
-            p.reset();p.setAntiAlias(true);
-            p.setColor(day?col("#247BAE"):col("#BDEFFF"));
+            float x=562f,y=423f;
+            p.reset();p.setAntiAlias(true);p.setColor(day?col("#247BAE"):col("#BDEFFF"));
             for(int row=0;row<2;row++)for(int col=0;col<2;col++){
-                float l=569-15+col*18,t=423-21+row*18;
+                float l=x-15+col*18,t=y-18+row*18;
                 c.drawRoundRect(new RectF(l,t,l+13,t+13),2.5f,2.5f,p);
             }
+            centerText("APPS",x,y+29,9,day?col("#28506C"):col("#DDF7FF"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}

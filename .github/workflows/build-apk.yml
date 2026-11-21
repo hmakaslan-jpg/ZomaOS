@@ -55,11 +55,11 @@ jobs:
           apk='app/build/outputs/apk/debug/app-debug.apk'
           allowed={'master_carbon.jpg','master_electric.jpg','master_pearl.jpg','zoma_icon.png'}
           with zipfile.ZipFile(apk) as z:
-          imgs=[n for n in z.namelist() if n.lower().endswith(('.png','.jpg','.jpeg','.webp'))]
-          names={n.rsplit('/',1)[-1] for n in imgs}
-          print('APK images:', imgs)
-          assert names==allowed and len(imgs)==4, f'Unexpected or duplicate APK images: {imgs}'
-          assert not any(n.startswith('assets/themes/') for n in z.namelist()), 'Duplicate theme assets found'
+              imgs=[n for n in z.namelist() if n.lower().endswith(('.png','.jpg','.jpeg','.webp'))]
+              names={n.rsplit('/',1)[-1] for n in imgs}
+              print('APK images:', imgs)
+              assert names==allowed and len(imgs)==4, f'Unexpected or duplicate APK images: {imgs}'
+              assert not any(n.startswith('assets/themes/') for n in z.namelist()), 'Duplicate theme assets found'
           print('APK bytes:', __import__('os').path.getsize(apk))
           PYVERIFY
       - uses: actions/upload-artifact@v4

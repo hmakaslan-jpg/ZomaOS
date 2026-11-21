@@ -1038,10 +1038,12 @@ public class MainActivity extends Activity {
             int muted=day?col("#456178"):col("#AEC6D8");
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
-            // The baked 800x480 dial spans roughly x=112..350, y=11..291.
-            // Its center is (231,151); keep the pivot shared by all three hands.
-            // Separate calibration for Day artwork; Carbon and Electric share one geometry.
-            float cx=day?231f:231f,cy=day?151f:151f; // Day calibration pending artwork measurement
+            // Dial centers measured from the actual 800x480 master artwork, then
+            // mapped through n14Image's source crop (Day left=25; others left=4; top=8).
+            // Day requires an independent pivot; Carbon/Electric share calibrated geometry.
+            // Day original center ~ (237,151) -> rendered ~ (219,145).
+            // Carbon/Electric original center ~ (232,148) -> rendered ~ (229,142).
+            float cx=day?219f:229f,cy=day?145f:142f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){

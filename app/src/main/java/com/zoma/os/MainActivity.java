@@ -986,7 +986,8 @@ public class MainActivity extends Activity {
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
             // The baked 800x480 dial spans roughly x=112..350, y=11..291.
             // Its center is (231,151); keep the pivot shared by all three hands.
-            float cx=231f,cy=151f;
+            // Separate calibration for Day artwork; Carbon and Electric share one geometry.
+            float cx=day?231f:231f,cy=day?151f:151f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
@@ -1066,26 +1067,16 @@ public class MainActivity extends Activity {
             centerText(glyph,x,y+5,r>19?19:r>16?16:14,active?accent:(day?col("#244963"):Color.WHITE),true);
         }
 
-        // The fourth tile has an engine printed in the JPEG itself. Cover only
-        // that emblem with a dark metallic circular medallion (no square panel),
-        // then draw a vector apps grid inside it. Keep the original tile border.
+        // Draw a compact flat apps glyph, matching the neighboring dock icons.
+        // Avoid the circular badge which made this button visually inconsistent.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
-            int base=day?col("#D4E4EE"):col("#102B43");
-            int rim=day?col("#537F9E"):col("#45C8FA");
-            p.reset();p.setAntiAlias(true);
-            p.setShader(new RadialGradient(x,y,40f,
-                new int[]{base,day?col("#AEC8D9"):col("#071827")},
-                null,Shader.TileMode.CLAMP));
-            c.drawCircle(x,y,39,p);p.setShader(null);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2f);p.setColor(rim);
-            c.drawCircle(x,y,37,p);p.setStyle(Paint.Style.FILL);
-            p.setColor(day?col("#226A9A"):col("#C5EDFF"));
-            for(int row=0;row<2;row++)for(int col=0;col<2;col++){
-                float l=x-15+col*18,t=y-18+row*18;
-                c.drawRoundRect(new RectF(l,t,l+12,t+12),2,2,p);
+            int color=day?col("#1679C4"):col("#C5EDFF");
+            p.reset();p.setAntiAlias(true);p.setColor(color);
+            for(int row=0;row<2;row++)for(int column=0;column<2;column++){
+                float l=x-17+column*20,t=y-19+row*20;
+                c.drawRoundRect(new RectF(l,t,l+14,t+14),2,2,p);
             }
-            centerText("APPS",x,y+29,9,day?col("#254C68"):col("#E0F6FF"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}

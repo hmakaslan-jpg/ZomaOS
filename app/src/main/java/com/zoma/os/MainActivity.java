@@ -993,7 +993,7 @@ public class MainActivity extends Activity {
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
             // Corrected from real head-unit photo: the previous pivot was right/below dial center.
-            float cx=231f,cy=151f;
+            float cx=214f,cy=146f; // Calibrated against photographed dial center on 800x480 master artwork
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
@@ -1083,47 +1083,28 @@ public class MainActivity extends Activity {
             centerText(glyph,x,y+5,r>19?18:r>16?15:13,ink,true);
         }
 
-        // The source JPEG has an old engine badge in this tile. Reuse a clean
-        // vertical strip from the SAME tile to conceal it without a circle or panel.
-        // The four Apps squares are then drawn directly on the restored tile surface.
-        // Preserve the original tile artwork, bevel, glow and texture.
-        // Reconstruct only the old engine glyph from adjacent background pixels.
-        Bitmap appsPatchCache; Bitmap appsPatchSource;
-        // Retain the factory artwork and its bevel. Blend only the engine symbol,
-        // using the adjacent pixels from the same tile with feathered edges.
+        // Conceal the engine badge baked into the JPEG with a soft colour-matched
+        // surface, not a circle and not a horizontally stretched 9-pixel strip.
         void drawOriginalFiveDockApps(boolean day,int accent){
-            if(masterArtwork!=null&&!masterArtwork.isRecycled()){
-                if(appsPatchSource!=masterArtwork||appsPatchCache==null){
-                    if(appsPatchCache!=null&&!appsPatchCache.isRecycled())appsPatchCache.recycle();
-                    appsPatchCache=Bitmap.createBitmap(92,61,Bitmap.Config.ARGB_8888);
-                    appsPatchSource=masterArtwork;
-                    for(int yy=0;yy<61;yy++){
-                        int sy=393+yy;
-                        int left=masterArtwork.getPixel(520,sy);
-                        int right=masterArtwork.getPixel(620,sy);
-                        for(int xx=0;xx<92;xx++){
-                            float t=xx/91f;
-                            int red=(int)(Color.red(left)*(1-t)+Color.red(right)*t);
-                            int green=(int)(Color.green(left)*(1-t)+Color.green(right)*t);
-                            int blue=(int)(Color.blue(left)*(1-t)+Color.blue(right)*t);
-                            float edgeX=Math.min(xx,91-xx)/12f;
-                            float edgeY=Math.min(yy,60-yy)/10f;
-                            float alpha=Math.min(1f,Math.max(0f,Math.min(edgeX,edgeY)));
-                            alpha=alpha*alpha*(3f-2f*alpha);
-                            appsPatchCache.setPixel(xx,yy,Color.argb((int)(255*alpha),red,green,blue));
-                        }
-                    }
-                }
-                p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);
-                c.drawBitmap(appsPatchCache,516,393,p);
+            float x=569f,y=423f;
+            int top=day?col("#D9E6ED"):appearance==2?col("#273A4B"):col("#B5C8D7");
+            int bottom=day?col("#A7C2D0"):appearance==2?col("#233443"):col("#819FB4");
+            p.reset();p.setAntiAlias(true);
+            // Feathered perimeter avoids a visible rectangular patch on the artwork.
+            for(int edge=9;edge>=0;edge--){
+                p.setShader(new LinearGradient(0,391,0,458,
+                    new int[]{top,bottom},null,Shader.TileMode.CLAMP));
+                p.setAlpha(edge==0?255:Math.max(12,55-edge*5));
+                c.drawRoundRect(new RectF(532-edge,395-edge,606+edge,454+edge),
+                    9+edge,9+edge,p);
             }
-            float x=562f,y=423f;
-            p.reset();p.setAntiAlias(true);p.setColor(day?col("#247BAE"):col("#BDEFFF"));
+            p.setShader(null);p.setAlpha(255);
+            p.setColor(day?col("#247BB6"):appearance==2?col("#D5F4FF"):col("#278EC8"));
             for(int row=0;row<2;row++)for(int col=0;col<2;col++){
-                float l=x-15+col*18,t=y-18+row*18;
-                c.drawRoundRect(new RectF(l,t,l+13,t+13),2.5f,2.5f,p);
+                float l=x-15+col*18,t=y-20+row*18;
+                c.drawRoundRect(new RectF(l,t,l+13,t+13),2,2,p);
             }
-            centerText("APPS",x,y+29,9,day?col("#28506C"):col("#DDF7FF"),true);
+            centerText("APPS",x,y+27,9,day?col("#31556D"):appearance==2?col("#E5F8FF"):col("#34607B"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}

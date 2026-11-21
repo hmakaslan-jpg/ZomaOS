@@ -173,6 +173,26 @@ public class MainActivity extends Activity {
         recycleN14(masterArtwork);
         int masterId=appearance==2?R.drawable.master_carbon:appearance==1?R.drawable.master_pearl:R.drawable.master_electric;
         masterArtwork=BitmapFactory.decodeResource(getResources(),masterId);
+        // Restore the original dock surface behind the baked engine icon once, at load time.
+        // No opaque rectangles or repeated overlay patches during frame rendering.
+        if(masterArtwork!=null){
+            Bitmap clean=masterArtwork.copy(Bitmap.Config.ARGB_8888,true);
+            if(clean!=null){
+                // The engine artwork is confined to the interior of dock tile #4.
+                // Interpolate the real image's clean top/bottom pixels, with soft edges.
+                for(int yy=399;yy<=447;yy++)for(int xx=544;xx<=601;xx++){
+                    float edge=Math.min(Math.min((xx-544)/7f,(601-xx)/7f),Math.min((yy-399)/6f,(447-yy)/6f));
+                    float blend=Math.max(0f,Math.min(1f,edge));blend=blend*blend*(3f-2f*blend);
+                    float t=(yy-399)/48f;
+                    int a=masterArtwork.getPixel(xx,397),b=masterArtwork.getPixel(xx,449),old=masterArtwork.getPixel(xx,yy);
+                    int rr=(int)((Color.red(a)*(1-t)+Color.red(b)*t)*blend+Color.red(old)*(1-blend));
+                    int gg=(int)((Color.green(a)*(1-t)+Color.green(b)*t)*blend+Color.green(old)*(1-blend));
+                    int bb=(int)((Color.blue(a)*(1-t)+Color.blue(b)*t)*blend+Color.blue(old)*(1-blend));
+                    clean.setPixel(xx,yy,Color.rgb(rr,gg,bb));
+                }
+                masterArtwork.recycle();masterArtwork=clean;
+            }
+        }
     }
     void chooseCarbonGauge(){
         new AlertDialog.Builder(this).setTitle("Carbon Sport gauge")
@@ -993,18 +1013,20 @@ public class MainActivity extends Activity {
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
             // Corrected from real head-unit photo: the previous pivot was right/below dial center.
-            float cx=214f,cy=146f; // Calibrated against photographed dial center on 800x480 master artwork
+            // Each master artwork has its own printed dial center (measured from 800x480 source).
+            float cx=day?237.5f:232.5f,cy=appearance==2?147.5f:152.5f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
                 // Do NOT repaint the clock dial or its printed numerals.
                 int handColor=day?col("#E5F4FF"):Color.WHITE;
                 // Tapered premium hands with subtle drop shadow and metal hub.
-                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),47,6.5f,handColor);
-                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),69,4.1f,handColor);
-                secondsNeedle(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),col("#28BFFF"));
-                fill(col("#15283B"));c.drawCircle(cx,cy,5.5f,p);
-                fill(col("#DCECF6"));c.drawCircle(cx,cy,2.3f,p);
+                premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),51,7.0f,handColor);
+                premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),76,4.5f,handColor);
+                secondsNeedle(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),day?col("#0877B9"):appearance==2?col("#FF5B64"):col("#24CFFF"));
+                fill(col("#142A3A"));c.drawCircle(cx,cy,5.2f,p);
+                fill(day?col("#268BC2"):appearance==2?col("#E94C57"):col("#5DEAFF"));c.drawCircle(cx,cy,3.3f,p);
+                fill(col("#F4FAFF"));c.drawCircle(cx,cy,1.55f,p);
             }else{
                 fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
                 centerText(speed>=0?String.valueOf(speed):"--",cx,cy+10,33,Color.WHITE,true);
@@ -1086,25 +1108,16 @@ public class MainActivity extends Activity {
         // Conceal the engine badge baked into the JPEG with a soft colour-matched
         // surface, not a circle and not a horizontally stretched 9-pixel strip.
         void drawOriginalFiveDockApps(boolean day,int accent){
-            float x=569f,y=423f;
-            int top=day?col("#D9E6ED"):appearance==2?col("#273A4B"):col("#B5C8D7");
-            int bottom=day?col("#A7C2D0"):appearance==2?col("#233443"):col("#819FB4");
-            p.reset();p.setAntiAlias(true);
-            // Feathered perimeter avoids a visible rectangular patch on the artwork.
-            for(int edge=9;edge>=0;edge--){
-                p.setShader(new LinearGradient(0,391,0,458,
-                    new int[]{top,bottom},null,Shader.TileMode.CLAMP));
-                p.setAlpha(edge==0?255:Math.max(12,55-edge*5));
-                c.drawRoundRect(new RectF(532-edge,395-edge,606+edge,454+edge),
-                    9+edge,9+edge,p);
-            }
-            p.setShader(null);p.setAlpha(255);
-            p.setColor(day?col("#247BB6"):appearance==2?col("#D5F4FF"):col("#278EC8"));
+            // Icon drawn directly on the restored artwork; center of the fourth dock tile.
+            float x=572f,y=423f;
+            p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.FILL);
+            p.setColor(day?col("#1679C4"):appearance==2?col("#DDF5FF"):col("#45E4FF"));
+            float cell=12f,gap=5f,left=x-(2*cell+gap)/2f,top=y-17f;
             for(int row=0;row<2;row++)for(int col=0;col<2;col++){
-                float l=x-15+col*18,t=y-20+row*18;
-                c.drawRoundRect(new RectF(l,t,l+13,t+13),2,2,p);
+                float l=left+col*(cell+gap),t=top+row*(cell+gap);
+                c.drawRoundRect(new RectF(l,t,l+cell,t+cell),2.4f,2.4f,p);
             }
-            centerText("APPS",x,y+27,9,day?col("#31556D"):appearance==2?col("#E5F8FF"):col("#34607B"),true);
+            centerText("APPS",x,y+24,9,day?col("#31556D"):appearance==2?col("#E5F8FF"):col("#C3EFFF"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}

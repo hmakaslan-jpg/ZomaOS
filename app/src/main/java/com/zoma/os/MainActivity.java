@@ -1126,37 +1126,30 @@ public class MainActivity extends Activity {
         // Avoid the circular badge which made this button visually inconsistent.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
-            // Restore the baked-in engine area using BOTH clean sides of the same
-            // tile, interpolating each row's actual theme gradient. Feather edges
-            // to preserve highlights and avoid the stretched rectangular stamp.
+            // Reconstruct the engine symbol from small clean tiles of this SAME
+            // theme image. Never scale a single patch across the whole button.
             if(masterArtwork!=null){
                 int cropX=appearance==1?25:4;
                 float sx=(masterArtwork.getWidth()-cropX-4)/800f;
                 float sy=(masterArtwork.getHeight()-8)/480f;
-                Bitmap tile=masterArtwork;
-                Paint repair=new Paint(Paint.ANTI_ALIAS_FLAG);
-                final int left=537,right=604,top=398,bottom=450;
-                for(int yy=top;yy<bottom;yy++){
-                    int srcY=Math.max(0,Math.min(tile.getHeight()-1,8+Math.round(yy*sy)));
-                    int leftX=Math.max(0,Math.min(tile.getWidth()-1,cropX+Math.round(524f*sx)));
-                    int rightX=Math.max(0,Math.min(tile.getWidth()-1,cropX+Math.round(614f*sx)));
-                    int lc=tile.getPixel(leftX,srcY),rc=tile.getPixel(rightX,srcY);
-                    float fy=Math.min(1f,Math.min((yy-top+1)/6f,(bottom-yy)/6f));
-                    for(int xx=left;xx<right;xx++){
-                        float t=(xx-left)/(float)(right-left);
-                        // Slightly vary the sample within clean texture strips
-                        // to retain the carbon weave without importing engine pixels.
-                        int jitter=(xx%5)-2;
-                        int sl=Math.max(0,Math.min(tile.getWidth()-1,leftX+jitter));
-                        int sr=Math.max(0,Math.min(tile.getWidth()-1,rightX+jitter));
-                        int l=tile.getPixel(sl,srcY),rr=tile.getPixel(sr,srcY);
-                        int red=Math.round(Color.red(l)*(1-t)+Color.red(rr)*t);
-                        int green=Math.round(Color.green(l)*(1-t)+Color.green(rr)*t);
-                        int blue=Math.round(Color.blue(l)*(1-t)+Color.blue(rr)*t);
-                        float fx=Math.min(1f,Math.min((xx-left+1)/7f,(right-xx)/7f));
-                        repair.setColor(Color.rgb(red,green,blue));
-                        repair.setAlpha(Math.round(255f*Math.min(fx,fy)));
-                        c.drawRect(xx,yy,xx+1,yy+1,repair);
+                Paint patchPaint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
+                // Source from the unmarked interior immediately to the left.
+                // Small 4x4 blocks retain texture and the original vertical gradient.
+                for(int yy=397;yy<452;yy+=4){
+                    for(int xx=534;xx<608;xx+=4){
+                        int w=Math.min(4,608-xx),h=Math.min(4,452-yy);
+                        int srcX=appearance==1?512:515;
+                        srcX+=((xx-534)%12);
+                        int sl=cropX+Math.round(srcX*sx);
+                        int st=8+Math.round(yy*sy);
+                        int sr=cropX+Math.round((srcX+w)*sx);
+                        int sb=8+Math.round((yy+h)*sy);
+                        sl=Math.max(0,Math.min(masterArtwork.getWidth()-2,sl));
+                        st=Math.max(0,Math.min(masterArtwork.getHeight()-2,st));
+                        sr=Math.max(sl+1,Math.min(masterArtwork.getWidth(),sr));
+                        sb=Math.max(st+1,Math.min(masterArtwork.getHeight(),sb));
+                        c.drawBitmap(masterArtwork,new Rect(sl,st,sr,sb),
+                          new RectF(xx,yy,xx+w,yy+h),patchPaint);
                     }
                 }
             }

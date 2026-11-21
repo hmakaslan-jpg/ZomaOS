@@ -593,7 +593,7 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||keyCode==KeyEvent.KEYCODE_HEADSETHOOK){if(localPlayer!=null){togglePlayback();return true;}}
         return super.onKeyDown(keyCode,event);
     }
-    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();if(n==2)chooseCarbonGauge();}}).setNegativeButton("Cancel",null).show();}
+    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
@@ -1043,7 +1043,7 @@ public class MainActivity extends Activity {
             // Day requires an independent pivot; Carbon/Electric share calibrated geometry.
             // Day original center ~ (237,151) -> rendered ~ (219,145).
             // Carbon/Electric original center ~ (232,148) -> rendered ~ (229,142).
-            float cx=day?219f:229f,cy=day?145f:142f;
+            float cx=day?219f:229f,cy=day?141f:138f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
@@ -1127,6 +1127,20 @@ public class MainActivity extends Activity {
         // Avoid the circular badge which made this button visually inconsistent.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
+            // The master JPG already contains an engine symbol on the fourth tile.
+            // Rebuild its center from a nearby clean area of the SAME tile, then
+            // paint the apps glyph. Keep the original glowing tile border intact.
+            if(masterArtwork!=null){
+                int cropX=appearance==1?25:4;
+                float sx=(masterArtwork.getWidth()-cropX-4)/800f;
+                float sy=(masterArtwork.getHeight()-8)/480f;
+                Rect source=new Rect(
+                    cropX+Math.round(523f*sx),8+Math.round(400f*sy),
+                    cropX+Math.round(539f*sx),8+Math.round(448f*sy));
+                RectF target=new RectF(535f,399f,604f,449f);
+                p.reset();p.setAntiAlias(true);p.setFilterBitmap(true);p.setColor(Color.WHITE);
+                c.drawBitmap(masterArtwork,source,target,p);
+            }
             int color=day?col("#1679C4"):col("#C5EDFF");
             p.reset();p.setAntiAlias(true);p.setColor(color);
             for(int row=0;row<2;row++)for(int column=0;column<2;column++){
@@ -1219,7 +1233,7 @@ public class MainActivity extends Activity {
                 else cycleRepeat();
                 return true;
             }
-            if(y>=28&&y<=285&&x>=105&&x<=357){chooseCarbonGauge();return true;}
+            if(y>=28&&y<=285&&x>=105&&x<=357){return true;}
             if(y>=310&&y<=359&&x>=130&&x<200){togglePlayback();return true;}
             // Do not open Settings from the decorative top status/header area.
             return true;

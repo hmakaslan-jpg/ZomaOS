@@ -8,10 +8,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out release candidate branch
+      - name: Check out approved main branch
         uses: actions/checkout@v4
         with:
-          ref: fix/v158-clock-centering-apps
+          ref: main
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

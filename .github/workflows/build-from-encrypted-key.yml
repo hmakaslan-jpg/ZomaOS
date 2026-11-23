@@ -23,6 +23,87 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
+      - name: Remove baked OBD symbol from the three original theme images
+        shell: bash
+        run: |
+          python3 -m pip install --quiet Pillow numpy opencv-python-headless
+          python3 - <<'PYREPAIR'
+          from PIL import Image, ImageFilter
+          from pathlib import Path
+          root=Path('app/src/main/res/drawable-nodpi')
+          for theme in ('carbon','electric','pearl'):
+              path=root/('master_'+theme+'.jpg')
+              original=Image.open(path).convert('RGB')
+              repaired=original.copy()
+              src=original.load()
+              dst=repaired.load()
+              x0,x1,y0,y1=536,610,389,448
+              if theme=='pearl':
+                  # Day only: remove the actual dark engine strokes by inpainting,
+                  # then soften only the center of the repaired button.
+                  # Do not alter the button's silver perimeter or blue glow.
+                  import cv2
+                  import numpy as np
+                  rgb=np.asarray(original)
+                  im=cv2.cvtColor(rgb,cv2.COLOR_RGB2BGR)
+                  gray=cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+                  mask=np.zeros(gray.shape,np.uint8)
+                  mask[389:446,532:617]=np.uint8(gray[389:446,532:617]<130)*255
+                  mask=cv2.dilate(mask,np.ones((5,5),np.uint8))
+                  repaired_cv=cv2.inpaint(im,mask,10,cv2.INPAINT_TELEA)
+                  softened=cv2.GaussianBlur(repaired_cv,(25,25),7)
+                  Y,X=np.mgrid[:480,:800]
+                  rr=((X-574)/39.)**2+((Y-418)/29.)**2
+                  alpha=np.clip((1.10-rr)/.5,0,1)
+                  alpha=alpha*alpha*(3-2*alpha)
+                  fixed=np.uint8(np.clip(repaired_cv*(1-alpha[:,:,None])+softened*alpha[:,:,None],0,255))
+                  result=Image.fromarray(cv2.cvtColor(fixed,cv2.COLOR_BGR2RGB))
+              else:
+                  for y in range(y0,y1):
+                      left=[sum(src[xx,y][c] for xx in range(525,533))/8 for c in range(3)]
+                      right=[sum(src[xx,y][c] for xx in range(614,622))/8 for c in range(3)]
+                      for x in range(x0,x1):
+                          t=(x-x0)/(x1-x0)
+                          dst[x,y]=tuple(round(left[c]*(1-t)+right[c]*t) for c in range(3))
+              if theme!='pearl':
+                  mask=Image.new('L',original.size,0)
+                  from PIL import ImageDraw
+                  ImageDraw.Draw(mask).rectangle((x0,y0,x1-1,y1-1),fill=255)
+                  mask=mask.filter(ImageFilter.GaussianBlur(11 if theme=='pearl' else 2.2))
+                  result=Image.composite(repaired,original,mask)
+              result.save(path,quality=83,subsampling=2,optimize=True)
+              print('Clean theme',theme,path.stat().st_size)
+          PYREPAIR
+      - name: Enforce clean source resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCLEAN'
+          from pathlib import Path
+          import shutil
+          root=Path('app/src/main')
+          allowed={'master_carbon.jpg','master_electric.jpg','master_pearl.jpg','zoma_icon.png'}
+          res=root/'res'
+          for p in sorted(res.rglob('*'),reverse=True):
+              if p.is_file() and not (p.parent==res/'drawable-nodpi' and p.name in allowed):
+                  print('Pruning legacy resource:',p)
+                  p.unlink()
+          for p in sorted(res.rglob('*'),reverse=True):
+              if p.is_dir() and not any(p.iterdir()):p.rmdir()
+          themes=root/'assets'/'themes'
+          if themes.exists():
+              print('Removing duplicate theme assets:', themes)
+              shutil.rmtree(themes)
+          assert not themes.exists(), 'Duplicate theme directory still exists'
+          java=root/'java'
+          for p in java.rglob('*.java'):
+              if p.relative_to(java).as_posix()!='com/zoma/os/MainActivity.java':
+                  print('Pruning legacy Java:',p)
+                  p.unlink()
+          found={p.name for p in (res/'drawable-nodpi').iterdir() if p.is_file()}
+          assert found==allowed, f'Unexpected resource set: {found}'
+          print('Clean resources verified:',sorted(found))
+          PYCLEAN
       - name: Retrieve encrypted backup and unlock locally on runner
         env:
           GH_TOKEN: ${{ github.token }}

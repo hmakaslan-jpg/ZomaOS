@@ -9,4 +9,26 @@ android {
         versionCode 58
         versionName '15.8-touch-stability-test'
     }
+    signingConfigs {
+        release {
+            if (System.getenv('ZOMAOS_KEYSTORE_PATH')) {
+                storeFile file(System.getenv('ZOMAOS_KEYSTORE_PATH'))
+                storePassword System.getenv('ZOMAOS_STORE_PASSWORD')
+                keyAlias System.getenv('ZOMAOS_KEY_ALIAS')
+                keyPassword System.getenv('ZOMAOS_KEY_PASSWORD')
+                storeType 'PKCS12'
+                v1SigningEnabled true
+                v2SigningEnabled false
+            }
+        }
+    }
+    lint {
+        disable 'ExpiredTargetSdkVersion'
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
 }

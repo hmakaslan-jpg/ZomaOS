@@ -462,14 +462,63 @@ public class MainActivity extends Activity {
         catch(Throwable err){android.util.Log.e("ZomaOS","USB browser error",err);toast("USB browser unavailable; select a folder");try{chooseUsbRoot();}catch(Throwable ignored){}}
 
     }
+    // Detect actual mounted USB folders rather than showing Android's generic roots.
+    // Some head units retain stale USBA mount directories after removal.
+    boolean hasUsbAudio(File dir,int depth){
+        if(depth<0||dir==null||!dir.isDirectory()||!dir.canRead())return false;
+        File[] files;try{files=dir.listFiles();}catch(Throwable t){return false;}
+        if(files==null)return false;
+        for(File f:files){if(f.isFile()&&audioFile(f))return true;}
+        if(depth>0)for(File f:files){if(f.isDirectory()&&hasUsbAudio(f,depth-1))return true;}
+        return false;
+    }
     void chooseUsbRoot(){
-        LinkedHashSet<String> paths=new LinkedHashSet<String>();
-        String[] roots={"/mnt/usb_storage","/mnt/usb","/mnt/udisk","/mnt/udisk1","/mnt/usbhost1","/mnt/usbhost2","/mnt/media_rw","/storage","/storage/usb0","/storage/usb1","/storage/udisk0","/storage/usbdisk","/mnt/sdcard","/sdcard","/mnt"};
-        for(String path:roots){File f=new File(path);if(f.exists()&&f.isDirectory()&&f.canRead())paths.add(f.getAbsolutePath());}
-        String env=System.getenv("SECONDARY_STORAGE");if(env!=null)for(String p:env.split(":")){File f=new File(p);if(f.isDirectory()&&f.canRead())paths.add(p);}
-        if(paths.isEmpty()){toast("No readable storage. Check USB mounting.");return;}
-        final String[] options=paths.toArray(new String[paths.size()]);
-        new AlertDialog.Builder(this).setTitle("Choose USB / storage folder").setItems(options,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){browseFolder(new File(options[n]));}}).setNegativeButton("Cancel",null).show();
+        LinkedHashMap<String,File> candidates=new LinkedHashMap<String,File>();
+        String[] bases={"/mnt/usb","/mnt/usb_storage","/mnt/udisk","/mnt/usbhost1","/mnt/usbhost2","/storage","/mnt/media_rw"};
+        for(String base:bases){
+            File root=new File(base);
+            if(!root.isDirectory()||!root.canRead())continue;
+            File[] children=root.listFiles();
+            if(children!=null)for(File child:children){
+                if(child.isDirectory()&&child.canRead()&&
+                   (child.getName().startsWith("USBA")||child.getName().startsWith("usb")||
+                    child.getName().startsWith("sd")||child.getName().matches("[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"))&&
+                    hasUsbAudio(child,3)){
+                    try{candidates.put(child.getCanonicalPath(),child);}catch(IOException ignored){}
+                }
+            }
+            if(hasUsbAudio(root,1)){
+                try{candidates.put(root.getCanonicalPath(),root);}catch(IOException ignored){}
+            }
+        }
+        // Prefer the deepest mount, not its parent directory.
+        ArrayList<File> mounts=new ArrayList<File>(candidates.values());
+        ArrayList<File> filtered=new ArrayList<File>();
+        for(File f:mounts){
+            boolean parent=false;
+            for(File other:mounts)if(other!=f&&other.getAbsolutePath().startsWith(f.getAbsolutePath()+"/")){parent=true;break;}
+            if(!parent)filtered.add(f);
+        }
+        if(filtered.size()==1){browseFolder(filtered.get(0));return;}
+        if(filtered.size()>1){
+            final File[] choices=filtered.toArray(new File[filtered.size()]);
+            String[] labels=new String[choices.length];
+            for(int i=0;i<labels.length;i++)labels[i]=choices[i].getName();
+            new AlertDialog.Builder(this).setTitle("Choose USB drive")
+                .setItems(labels,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){browseFolder(choices[n]);}})
+                .setNegativeButton("Cancel",null).show();
+            return;
+        }
+        // Fallback allows manual browsing when a USB contains no recognized audio yet.
+        final String[] roots={"/mnt/usb","/mnt/usb_storage","/storage","/mnt/sdcard"};
+        final ArrayList<File> available=new ArrayList<File>();
+        for(String root:roots){File f=new File(root);if(f.isDirectory()&&f.canRead())available.add(f);}
+        if(available.isEmpty()){toast("No readable USB storage found");return;}
+        final String[] labels=new String[available.size()];
+        for(int i=0;i<labels.length;i++)labels[i]=available.get(i).getAbsolutePath();
+        new AlertDialog.Builder(this).setTitle("USB not detected - browse manually")
+            .setItems(labels,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){browseFolder(available.get(n));}})
+            .setNegativeButton("Cancel",null).show();
     }
     void browseFolder(final File folder){
         File[] entries;
@@ -544,11 +593,11 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||keyCode==KeyEvent.KEYCODE_HEADSETHOOK){if(localPlayer!=null){togglePlayback();return true;}}
         return super.onKeyDown(keyCode,event);
     }
-    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();if(n==2)chooseCarbonGauge();}}).setNegativeButton("Cancel",null).show();}
+    void chooseAppearance(){final String[] choices={"Electric Night", "Pearl Day", "Carbon Sport"};new AlertDialog.Builder(this).setTitle("Appearance").setSingleChoiceItems(choices,appearance,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){appearance=n;getPreferences(MODE_PRIVATE).edit().putInt("appearance",n).apply();loadN14Skin();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
-        final String[] items={"Appearance • Night / Daylight", "Clock • 12 / 24 hour", "Analog clock • Show / hide", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
+        final String[] items={"Appearance • Night / Daylight", "Clock • 12 / 24 hour", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
         final Dialog dialog=new Dialog(this);dialog.setTitle("ZomaOS V15.8 • Settings");
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(16,10,16,10);panel.setBackgroundColor(Color.rgb(16,39,59));
         TextView heading=new TextView(this);heading.setText("ZOMAOS V15.8   /   SETTINGS");heading.setTextSize(22);heading.setTextColor(Color.WHITE);heading.setPadding(12,8,8,14);panel.addView(heading);
@@ -558,13 +607,12 @@ public class MainActivity extends Activity {
         Button close=new Button(this);close.setText("BACK TO DASHBOARD");panel.addView(close);close.setOnClickListener(new View.OnClickListener(){public void onClick(View v){dialog.dismiss();}});
         list.setOnItemClickListener(new AdapterView.OnItemClickListener(){public void onItemClick(AdapterView<?> p,View v,int n,long id){dialog.dismiss();switch(n){
             case 0:chooseAppearance();break;case 1:chooseClockFormat();break;
-            case 2:showAnalog=!showAnalog;getPreferences(MODE_PRIVATE).edit().putBoolean("showAnalog",showAnalog).apply();dashboard.invalidate();break;
-            case 3:chooseUsbRoot();break;case 4:chooseAnyMusicApp();break;case 5:showAppCenter();break;
-            case 6:maintenanceCenter();break;case 7:toggleOilReminder();break;
-            case 8:maintenanceInput("Oil change interval (km)","oil_interval",getPreferences(MODE_PRIVATE).getInt("oil_interval",7000));break;
-            case 9:showMode();break;case 10:launch(new String[]{},"settings");break;
+            case 2:chooseUsbRoot();break;case 3:chooseAnyMusicApp();break;case 4:showAppCenter();break;
+            case 5:maintenanceCenter();break;case 6:toggleOilReminder();break;
+            case 7:maintenanceInput("Oil change interval (km)","oil_interval",getPreferences(MODE_PRIVATE).getInt("oil_interval",7000));break;
+            case 8:showMode();break;case 9:launch(new String[]{},"settings");break;
 
-            case 11:new AlertDialog.Builder(MainActivity.this).setTitle("Restore defaults?").setPositiveButton("Reset",new DialogInterface.OnClickListener(){public void onClick(DialogInterface a,int b){getPreferences(MODE_PRIVATE).edit().clear().apply();theme=0;showAnalog=true;centerMode=0;appearance=0;clock12=false;dashboard.invalidate();}}).setNegativeButton("Cancel",null).show();break;
+            case 10:new AlertDialog.Builder(MainActivity.this).setTitle("Restore defaults?").setPositiveButton("Reset",new DialogInterface.OnClickListener(){public void onClick(DialogInterface a,int b){getPreferences(MODE_PRIVATE).edit().clear().apply();theme=0;showAnalog=true;centerMode=0;appearance=0;clock12=false;dashboard.invalidate();}}).setNegativeButton("Cancel",null).show();break;
         }}});
         dialog.setContentView(panel);dialog.show();if(dialog.getWindow()!=null)dialog.getWindow().setLayout(-1,-1);
     }
@@ -960,21 +1008,26 @@ public class MainActivity extends Activity {
         // The master images already contain a clean numbered clock face.
         // A true symmetric tapered hand. The old triangle used only a 0.7px tip
         // and made the hour and minute hands appear like thin needles.
+        // Sport design #2: short counterweight, angular tapered body and crisp tip.
+        // All vertices are calculated from one shared pivot to prevent wobble.
         void premiumHand(float cx,float cy,float angle,float length,float width,int color){
             float dx=(float)Math.cos(angle),dy=(float)Math.sin(angle);
             float px=-dy,py=dx;
             android.graphics.Path shape=new android.graphics.Path();
-            shape.moveTo(cx-dx*9+px*width*.36f,cy-dy*9+py*width*.36f);
-            shape.lineTo(cx+dx*(length-8)+px*width*.47f,cy+dy*(length-8)+py*width*.47f);
+            shape.moveTo(cx-dx*12+px*width*.30f,cy-dy*12+py*width*.30f);
+            shape.lineTo(cx+dx*5+px*width*.55f,cy+dy*5+py*width*.55f);
+            shape.lineTo(cx+dx*(length-12)+px*width*.34f,cy+dy*(length-12)+py*width*.34f);
             shape.lineTo(cx+dx*length,cy+dy*length);
-            shape.lineTo(cx+dx*(length-8)-px*width*.47f,cy+dy*(length-8)-py*width*.47f);
-            shape.lineTo(cx-dx*9-px*width*.36f,cy-dy*9-py*width*.36f);
+            shape.lineTo(cx+dx*(length-12)-px*width*.34f,cy+dy*(length-12)-py*width*.34f);
+            shape.lineTo(cx+dx*5-px*width*.55f,cy+dy*5-py*width*.55f);
+            shape.lineTo(cx-dx*12-px*width*.30f,cy-dy*12-py*width*.30f);
             shape.close();
-            p.reset();p.setAntiAlias(true);p.setColor(Color.argb(115,0,0,0));
-            c.save();c.translate(1f,1.5f);c.drawPath(shape,p);c.restore();
+            p.reset();p.setAntiAlias(true);
+            p.setColor(Color.argb(105,0,0,0));
+            c.save();c.translate(1.2f,1.5f);c.drawPath(shape,p);c.restore();
             p.setColor(color);c.drawPath(shape,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.7f);
-            p.setColor(Color.argb(155,255,255,255));c.drawPath(shape,p);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(.75f);
+            p.setColor(Color.argb(145,255,255,255));c.drawPath(shape,p);
             p.setStyle(Paint.Style.FILL);
         }
         void drawMasterV15(){
@@ -984,9 +1037,12 @@ public class MainActivity extends Activity {
             int muted=day?col("#456178"):col("#AEC6D8");
             n14Image(masterArtwork,0,0,800,480);
             if(day){fill(col("#152B3B"));c.drawRect(0,0,3,480,p);}
-            // The baked 800x480 dial spans roughly x=112..350, y=11..291.
-            // Its center is (231,151); keep the pivot shared by all three hands.
-            float cx=231f,cy=151f;
+            // Dial centers measured from the actual 800x480 master artwork, then
+            // mapped through n14Image's source crop (Day left=25; others left=4; top=8).
+            // Day requires an independent pivot; Carbon/Electric share calibrated geometry.
+            // Day original center ~ (237,151) -> rendered ~ (219,145).
+            // Carbon/Electric original center ~ (232,148) -> rendered ~ (229,142).
+            float cx=day?219f:229f,cy=day?141f:138f;
             Calendar now=Calendar.getInstance();
             float sec=now.get(Calendar.SECOND),minute=now.get(Calendar.MINUTE)+sec/60f,hour=now.get(Calendar.HOUR)+minute/60f;
             if(carbonClock){
@@ -996,8 +1052,8 @@ public class MainActivity extends Activity {
                 premiumHand(cx,cy,(float)(hour*Math.PI/6-Math.PI/2),49,9,handColor);
                 premiumHand(cx,cy,(float)(minute*Math.PI/30-Math.PI/2),70,6,handColor);
                 premiumHand(cx,cy,(float)(sec*Math.PI/30-Math.PI/2),77,1.8f,accent);
-                fill(col("#233748"));c.drawCircle(cx,cy,7,p);
-                fill(col("#EAF6FF"));c.drawCircle(cx,cy,3.5f,p);
+                fill(col("#233748"));c.drawCircle(cx,cy,6,p);
+                fill(col("#EAF6FF"));c.drawCircle(cx,cy,2.8f,p);
             }else{
                 fill(day?col("#142A3E"):col("#10131C"));c.drawCircle(cx,cy,69,p);
                 centerText(speed>=0?String.valueOf(speed):"--",cx,cy+10,33,Color.WHITE,true);
@@ -1066,26 +1122,17 @@ public class MainActivity extends Activity {
             centerText(glyph,x,y+5,r>19?19:r>16?16:14,active?accent:(day?col("#244963"):Color.WHITE),true);
         }
 
-        // The fourth tile has an engine printed in the JPEG itself. Cover only
-        // that emblem with a dark metallic circular medallion (no square panel),
-        // then draw a vector apps grid inside it. Keep the original tile border.
+        // Draw a compact flat apps glyph, matching the neighboring dock icons.
+        // Avoid the circular badge which made this button visually inconsistent.
         void drawOriginalFiveDockApps(boolean day,int accent){
             float x=569f,y=423f;
-            int base=day?col("#D4E4EE"):col("#102B43");
-            int rim=day?col("#537F9E"):col("#45C8FA");
-            p.reset();p.setAntiAlias(true);
-            p.setShader(new RadialGradient(x,y,40f,
-                new int[]{base,day?col("#AEC8D9"):col("#071827")},
-                null,Shader.TileMode.CLAMP));
-            c.drawCircle(x,y,39,p);p.setShader(null);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2f);p.setColor(rim);
-            c.drawCircle(x,y,37,p);p.setStyle(Paint.Style.FILL);
-            p.setColor(day?col("#226A9A"):col("#C5EDFF"));
-            for(int row=0;row<2;row++)for(int col=0;col<2;col++){
-                float l=x-15+col*18,t=y-18+row*18;
-                c.drawRoundRect(new RectF(l,t,l+12,t+12),2,2,p);
+            // The original theme JPG is cleaned at build time; do not paint tiles over it.
+            int color=day?col("#1679C4"):col("#C5EDFF");
+            p.reset();p.setAntiAlias(true);p.setColor(color);
+            for(int row=0;row<2;row++)for(int column=0;column<2;column++){
+                float l=x-17+column*20,t=y-19+row*20;
+                c.drawRoundRect(new RectF(l,t,l+14,t+14),2,2,p);
             }
-            centerText("APPS",x,y+29,9,day?col("#254C68"):col("#E0F6FF"),true);
         }
         void drawApproved(){drawMasterV15();}
         void drawV11(){drawApproved();}
@@ -1172,8 +1219,8 @@ public class MainActivity extends Activity {
                 else cycleRepeat();
                 return true;
             }
-            if(y>=28&&y<=285&&x>=105&&x<=357){chooseCarbonGauge();return true;}
-            if(y>=310&&y<=359&&x>=130&&x<200){togglePlayback();return true;}
+            if(y>=28&&y<=285&&x>=105&&x<=357){return true;}
+            if(y>=310&&y<=359&&x>=130&&x<521){openRememberedUsb();return true;}
             // Do not open Settings from the decorative top status/header area.
             return true;
         }

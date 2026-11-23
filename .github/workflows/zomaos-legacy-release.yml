@@ -14,6 +14,8 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
       - name: Check signing secrets
         env:
           STORE_B64: ${{ secrets.ZOMAOS_RELEASE_KEYSTORE_BASE64 }}
@@ -35,8 +37,7 @@ jobs:
           ZOMAOS_KEY_ALIAS: ${{ secrets.ZOMAOS_RELEASE_KEY_ALIAS }}
           ZOMAOS_KEY_PASSWORD: ${{ secrets.ZOMAOS_RELEASE_KEY_PASSWORD }}
         run: |
-          chmod +x ./gradlew
-          ./gradlew --no-daemon clean assembleRelease
+          gradle --no-daemon clean assembleRelease
       - name: Verify legacy v1 signing and package metadata
         run: |
           APK=app/build/outputs/apk/release/app-release.apk

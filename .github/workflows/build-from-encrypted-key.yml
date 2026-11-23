@@ -1,0 +1,71 @@
+name: Build ZomaOS signed APK from encrypted backup
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release candidate branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v158-clock-centering-apps
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Retrieve encrypted backup and unlock locally on runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BACKUP_PASSWORD: ${{ secrets.ZOMAOS_BACKUP_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$BACKUP_PASSWORD" || { echo 'Missing ZOMAOS_BACKUP_PASSWORD secret'; exit 1; }
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow generate-signing-key.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID" || { echo 'No successful key-generation run found'; exit 1; }
+          mkdir -p "$RUNNER_TEMP/signing"
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name ZomaOS-encrypted-signing-key-backup --dir "$RUNNER_TEMP/signing"
+          cd "$RUNNER_TEMP/signing"
+          printf '%s' "$BACKUP_PASSWORD" | openssl enc -d -aes-256-cbc -salt -pbkdf2 -iter 200000 -in zomaos-signing-backup.tar.gz.enc -out signing-backup.tar.gz -pass stdin
+          tar -xzf signing-backup.tar.gz
+          test -s zomaos-release.p12 && test -s signing-info.txt
+          source signing-info.txt
+          {
+            echo "ZOMAOS_KEYSTORE_PATH=$RUNNER_TEMP/signing/zomaos-release.p12"
+            echo "ZOMAOS_STORE_PASSWORD=$ZOMAOS_RELEASE_STORE_PASSWORD"
+            echo "ZOMAOS_KEY_ALIAS=$ZOMAOS_RELEASE_KEY_ALIAS"
+            echo "ZOMAOS_KEY_PASSWORD=$ZOMAOS_RELEASE_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "::add-mask::$ZOMAOS_RELEASE_STORE_PASSWORD"
+          echo "::add-mask::$ZOMAOS_RELEASE_KEY_PASSWORD"
+          rm -f signing-backup.tar.gz signing-info.txt
+      - name: Build with Android Gradle Plugin
+        run: gradle --no-daemon clean assembleRelease
+      - name: Verify Android 4 compatible v1 signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)"
+          "$APKSIGNER" verify --verbose --min-sdk-version 16 "$APK" | tee /tmp/signature.txt
+          grep -q 'Verified using v1 scheme (JAR signing): true' /tmp/signature.txt
+          "$AAPT" dump badging "$APK" | head -n 5
+          sha256sum "$APK" > app/build/outputs/apk/release/SHA256SUMS.txt
+      - name: Upload signed test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZomaOS-V15_8-signed-legacy-test
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/release/SHA256SUMS.txt
+          retention-days: 30

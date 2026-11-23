@@ -1,0 +1,40 @@
+name: Generate encrypted ZomaOS signing key (one-time)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require backup password secret
+        env:
+          BACKUP_PASSWORD: ${{ secrets.ZOMAOS_BACKUP_PASSWORD }}
+        run: |
+          if [ -z "$BACKUP_PASSWORD" ]; then echo 'Set ZOMAOS_BACKUP_PASSWORD as repository Actions secret first'; exit 1; fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Create signing key and encrypt backup
+        env:
+          BACKUP_PASSWORD: ${{ secrets.ZOMAOS_BACKUP_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/zomaos-signing"
+          cd "$RUNNER_TEMP/zomaos-signing"
+          STORE_PASS="$(openssl rand -hex 24)"
+          keytool -genkeypair -noprompt -storetype PKCS12 -keystore zomaos-release.p12 -alias zomaos -keyalg RSA -keysize 2048 -sigalg SHA256withRSA -validity 10000 -dname 'CN=ZomaOS,OU=Development,O=ZomaOS,C=EG' -storepass "$STORE_PASS" -keypass "$STORE_PASS"
+          printf 'ZOMAOS_RELEASE_STORE_PASSWORD=%s\nZOMAOS_RELEASE_KEY_PASSWORD=%s\nZOMAOS_RELEASE_KEY_ALIAS=zomaos\n' "$STORE_PASS" "$STORE_PASS" > signing-info.txt
+          tar -czf signing-backup.tar.gz zomaos-release.p12 signing-info.txt
+          printf '%s' "$BACKUP_PASSWORD" | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in signing-backup.tar.gz -out zomaos-signing-backup.tar.gz.enc -pass stdin
+          shred -u signing-backup.tar.gz signing-info.txt zomaos-release.p12 || true
+          mv zomaos-signing-backup.tar.gz.enc "$GITHUB_WORKSPACE/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZomaOS-encrypted-signing-key-backup
+          path: zomaos-signing-backup.tar.gz.enc
+          retention-days: 7
+          if-no-files-found: error

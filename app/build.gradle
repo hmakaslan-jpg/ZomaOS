@@ -7,7 +7,7 @@ android {
         minSdk 16
         targetSdk 22
         versionCode 58
-        versionName '15.8-touch-stability-test'
+        versionName '15.8'
     }
     signingConfigs {
         release {

@@ -1,57 +1,95 @@
-# ZomaOS Free — Geely X7 Head Unit Launcher
+# ZomaOS
 
-**A community-built launcher for compatible legacy Geely X7 Android head units.**
+A lightweight, themeable home-screen launcher for older Android head units, built and tested on the **2019 Geely X7 (Emgrand X7)**.
 
-ZomaOS is an independent enthusiast project. It is **not affiliated with or endorsed by Geely, Nokia, Google, or any vehicle manufacturer**.
+> Independent enthusiast project. Not affiliated with or endorsed by Geely, Google, or any vehicle manufacturer. "Geely" and "Emgrand" are trademarks of their owners and appear here only to describe compatibility.
 
-## Current status
+<!-- SCREENSHOTS: replace with real files in docs/screenshots/ -->
+| Carbon | Electric | Day |
+|---|---|---|
+| ![Carbon](docs/screenshots/carbon.jpg) | ![Electric](docs/screenshots/electric.jpg) | ![Day](docs/screenshots/day.jpg) |
 
-**Free preview: V15.8 (build a421088)**. Tested by the developer on one original Geely X7 2019 head unit with an 800 × 480 display and legacy Android 4.x firmware. **Compatibility with other vehicles, screen models, Android versions, and firmware builds has not been established.** Do not assume it will work on all X7 or X7 Sport units.
+<!-- DEMO VIDEO: add a YouTube link or a GIF of the animated night theme + live gauges here -->
+**Demo video:** _coming soon_
 
-The developer's device tests covered the Carbon, Electric, and Day themes and core launcher behavior. The Day Apps-button background may still show a slight shading difference. This is a community preview, not a certified automotive product.
+## Status
+
+**Free preview, v15.8.** Tested by the author on **one** original Geely X7 2019 head unit: 800 x 480 screen, Android 4.x firmware. Other cars, screens, Android versions and firmware builds are **untested**. Do not assume it works on your unit; see [Compatibility](#compatibility) and help us find out.
 
 ## Features
 
-- Three themes: **Carbon**, **Electric**, and **Day**
-- Analog clock and music playback interface
-- USB music browsing and playback/resume behavior
-- Shortcuts for radio, Android Auto, files, and app access, subject to installed apps and head-unit compatibility
-- Designed around the **800 × 480** landscape layout
+- **Three themes:** Carbon (red), Electric (blue), Day (silver)
+- **Analog clock** (12 or 24 hour)
+- **USB music:** browse folders, play, and resume where you stopped
+- **Radio shortcut** to the head unit's built-in radio app
+- **Android Auto launch** through [OpenAuto](https://github.com/f1xpl/openauto)-style apps (you install the third-party app; ZomaOS only launches it)
+- **App grid** and quick Wi-Fi / Bluetooth settings
+- **OBD2 readout** (speed, RPM, coolant, load, fuel) over a Bluetooth ELM327 adapter or a phone bridge, with a **demo mode** that shows simulated data (clearly labelled "DEMO / NOT REAL DATA")
+- Designed for **800 x 480 landscape**
 
-**Important:** Android Auto support depends on a separately compatible app, phone, USB connection, and head unit. ZomaOS does not add native Android Auto support to unsupported hardware.
+ZomaOS does **not** add native Android Auto to hardware that lacks it. It needs a compatible app, phone and USB connection.
 
-## Download
+## Compatibility
 
-Use the [GitHub Actions builds](../../actions) for developer previews. **Do not download APKs from unofficial mirrors.** A stable GitHub Release will be published after final packaging and installation guidance are reviewed.
+| | |
+|---|---|
+| Verified | Geely X7 2019, original head unit, 800 x 480, Android 4.x |
+| Minimum Android | 4.1 (API 16) |
+| Other screens | Untested. Layout is currently fixed to 800 x 480 |
+| Other Geely models | Untested. Reports welcome |
 
-## Before installing
+Got a different unit? Open a [compatibility report](../../issues/new?template=compatibility-report.md). It takes two minutes and decides what gets supported next.
 
-1. Confirm your head unit's Android version, firmware, display resolution, and device model.
-2. Save the current launcher configuration and make sure you know how to return to the factory launcher.
-3. Install only while parked. Never configure or operate the launcher while driving.
-4. Test navigation, radio, Bluetooth, steering-wheel controls, and any safety-relevant factory functions before relying on the device.
-5. If the launcher crashes or the HOME button no longer behaves correctly, restore the original launcher using your device's application settings or factory recovery instructions.
+## Install
 
-**Risk:** Installing an APK may be blocked by device security settings or could interfere with factory functions. Use at your own risk. Do not flash firmware or root the head unit to install this launcher.
+**Before you start**
 
-## Compatibility reports
+1. Know your head unit's Android version, firmware and screen resolution.
+2. Know how to get back to the factory launcher (see [Rollback](#rollback)).
+3. Install **only while parked**. Never configure the launcher while driving.
+4. Do not root or flash the head unit for this.
 
-Please open a GitHub Issue with:
-- Vehicle model, year, and market
-- Head-unit model, Android version, firmware version, and screen resolution
-- Whether installation and HOME selection worked
-- Which theme and features you tested
-- Screenshots with personal details removed
+**Steps (as done on the tested unit)**
+
+1. Download `ZomaOS-v15.8.apk` and `SHA256SUMS.txt` from the [latest release](../../releases/latest). Only download from this repository, not from mirrors.
+2. Check the file: `sha256sum ZomaOS-v15.8.apk` (Windows: `certutil -hashfile ZomaOS-v15.8.apk SHA256`) and compare with `SHA256SUMS.txt`.
+3. Format a USB flash drive as **FAT32** and copy the APK onto it.
+4. On the head unit, set the date to **1 January 2000**.
+5. Open the screen that shows the **barcode**.
+6. Tap the barcode **7 times** to reveal the hidden File Manager (works on the tested firmware; yours may differ).
+7. In File Manager, open the USB drive, select the APK and install it.
+8. Press HOME and choose **ZomaOS**. Pick "Always" only after you have tested it.
+9. Test radio, USB music, Bluetooth and steering-wheel buttons before you drive.
+10. Set the date back to normal.
+
+If install is blocked, do not bypass security warnings. Report your firmware version in an issue.
+
+Full guide in English, Arabic and Russian: [docs/INSTALLATION_GEELY_X7.md](docs/INSTALLATION_GEELY_X7.md)
+
+## Rollback
+
+If ZomaOS crashes, or HOME stops working:
+
+1. Press HOME, and when asked, choose the factory launcher (do not tick "Always" for ZomaOS until you are sure).
+2. Or go to the unit's Settings, Apps, ZomaOS, and **Clear defaults**, then press HOME and pick the factory launcher.
+3. Or uninstall ZomaOS from Settings, Apps.
+
+<!-- TODO(author): confirm which of these three works on your unit and delete the rest. -->
 
 ## Roadmap
 
-- **Free:** Stability improvements, installation documentation, and compatibility testing
-- **Future concept:** An optional Electric Night Pro theme with an analog clock. Pricing and availability have **not** been announced.
+- Scaled layout for other resolutions (1024 x 600 first)
+- Compatibility reports from other Geely models
+- An animated premium night theme (not announced, no price yet)
 
-## Languages and community
+## Support the project
 
-English is the primary documentation language. Community feedback in Arabic, Russian, and other languages is welcome.
+ZomaOS is free. If it helps you, donations keep it going: <!-- TODO: add Ko-fi / Boosty links -->
 
-## Source and licensing
+## Languages
 
-This repository contains the project source. **No open-source license is granted unless a LICENSE file explicitly says otherwise.** Please do not redistribute or repackage the APK without permission.
+English is the main language here. Arabic, Russian and other languages are welcome in issues.
+
+## License
+
+Code: MIT. Artwork and theme images: see [LICENSE](LICENSE) and [ASSETS-LICENSE.md](ASSETS-LICENSE.md).

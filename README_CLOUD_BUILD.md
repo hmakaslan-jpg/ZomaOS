@@ -1,1 +1,0 @@
-ZomaOS V1 cloud build: upload contents of ZomaOS_V1 to a GitHub repository. Actions > Build ZomaOS APK > Run workflow. Download ZomaOS-V1-debug-APK artifact. OpenAuto package identified from supplied APK: me.ri3d.openauto. Not yet compiled or tested.

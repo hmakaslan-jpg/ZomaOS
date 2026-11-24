@@ -1,0 +1,42 @@
+name: Head unit compatibility report
+description: Tell us whether ZomaOS works on your car's head unit
+title: "[Compat] <car model/year> - <screen size> - Android <version>"
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: "Please do not test while driving. Remove VIN, GPS and personal data from screenshots."
+  - type: input
+    id: car
+    attributes: {label: "Car model, year, country", placeholder: "Geely X7 2019, Egypt"}
+    validations: {required: true}
+  - type: input
+    id: unit
+    attributes: {label: "Head unit model / hardware ID (Settings > About)"}
+  - type: input
+    id: android
+    attributes: {label: "Android version and firmware build", placeholder: "4.1.2, build ..."}
+    validations: {required: true}
+  - type: input
+    id: res
+    attributes: {label: "Screen resolution", placeholder: "800x480"}
+    validations: {required: true}
+  - type: input
+    id: ver
+    attributes: {label: "ZomaOS version", placeholder: "15.8"}
+    validations: {required: true}
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install
+      options: ["Worked", "Blocked or failed"]
+    validations: {required: true}
+  - type: textarea
+    id: result
+    attributes:
+      label: What happened?
+      description: "HOME button, each theme, radio, USB music, Bluetooth, Android Auto. Mark each working / broken / not tested. Could you get back to the factory launcher?"
+    validations: {required: true}
+  - type: textarea
+    id: shots
+    attributes: {label: "Screenshots, photos or logs"}

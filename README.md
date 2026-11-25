@@ -95,7 +95,7 @@ If ZomaOS crashes, or HOME stops working:
 
 ## Support the project
 
-ZomaOS is free. If it helps you, donations keep it going: <!-- TODO: add Ko-fi / Boosty links -->
+ZomaOS is free. If it helps you, a small donation keeps it going: **[ko-fi.com/zomaos](https://ko-fi.com/zomaos)**. Thank you.
 
 ## Languages
 

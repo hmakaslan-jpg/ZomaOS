@@ -22,7 +22,7 @@ A lightweight, themeable home-screen launcher for older Android head units, buil
 - **Analog clock** (12 or 24 hour)
 - **USB music:** browse folders, play, and resume where you stopped
 - **Radio shortcut** to the head unit's built-in radio app
-- **Android Auto launch** through [OpenAuto](https://github.com/f1xpl/openauto)-style apps (you install the third-party app; ZomaOS only launches it)
+- **Android Auto launch** through the third-party app [OpenAuto by Jan Ried](https://github.com/JanRi3D/OpenAuto/releases) (you install it yourself; ZomaOS only opens it). See [Android Auto setup](#android-auto-setup)
 - **App grid** and quick Wi-Fi / Bluetooth settings
 - **OBD2 readout** (speed, RPM, coolant, load, fuel) over a Bluetooth ELM327 adapter or a phone bridge, with a **demo mode** that shows simulated data (clearly labelled "DEMO / NOT REAL DATA")
 - Designed for **800 x 480 landscape**
@@ -65,6 +65,17 @@ Got a different unit? Open a [compatibility report](../../issues/new?template=co
 If install is blocked, do not bypass security warnings. Report your firmware version in an issue.
 
 Full guide in English, Arabic and Russian: [docs/INSTALLATION_GEELY_X7.md](docs/INSTALLATION_GEELY_X7.md)
+
+## Android Auto setup
+
+ZomaOS does not include Android Auto. The ZomaOS **Android Auto** button opens a separate head-unit app that you install yourself. The author uses **OpenAuto by Jan Ried** (Android package `me.ri3d.openauto`), which supports Android 4.1 and newer.
+
+- Download: [github.com/JanRi3D/OpenAuto/releases](https://github.com/JanRi3D/OpenAuto/releases) (download only from the author's page)
+- Tested by the ZomaOS author: **v0.6.0-carplay1** on a Geely X7 2019 (Android 4.1, 800 x 480), Android Auto over a **USB cable**. Wireless and CarPlay are not tested here.
+- Install it the same way as ZomaOS (USB drive and the unit's File Manager), then open ZomaOS and tap the Android Auto button.
+- Your phone needs the Android Auto app, and the cable must support data.
+
+OpenAuto is a separate project by its own author. ZomaOS is **not affiliated** with it, and does not host or modify it. Please read its page for its terms and for support. It is also not the Raspberry Pi project of the same name by f1x.
 
 ## Rollback
 

@@ -51,8 +51,8 @@ Got a different unit? Open a [compatibility report](../../issues/new?template=co
 
 **Steps (as done on the tested unit)**
 
-1. Download `ZomaOS-v15.8.apk` and `SHA256SUMS.txt` from the [latest release](../../releases/latest). Only download from this repository, not from mirrors.
-2. Check the file: `sha256sum ZomaOS-v15.8.apk` (Windows: `certutil -hashfile ZomaOS-v15.8.apk SHA256`) and compare with `SHA256SUMS.txt`.
+1. Download `ZomaOs.V15.8.Release.apk` from the [latest release](../../releases/latest). Only download from this repository, not from mirrors.
+2. Check the file: `sha256sum ZomaOs.V15.8.Release.apk` (Windows: `certutil -hashfile ZomaOs.V15.8.Release.apk SHA256`) and compare with the SHA-256 listed in the release notes.
 3. Format a USB flash drive as **FAT32** and copy the APK onto it.
 4. On the head unit, set the date to **1 January 2000**.
 5. Open the screen that shows the **barcode**.

@@ -13,7 +13,7 @@ Same three themes as 15.8 (Electric, Pearl, Carbon). No animated themes.
 - Apps list with search, sorting and cached icons
 - Optional phone GPS for the speed gauge (needs the companion phone app, off by default), weather and prayer-time chips (off unless used)
 - Read-only fault codes, engine temperature alert, settings backup and restore
-- Bolder, larger date; names under the five dock icons (USB MUSIC, RADIO FM, ANDROID AUTO, APPS, FILE BROWSER); welcome animation available but off by default
+- Bolder, larger date; welcome animation available but off by default
 
 ### Not included
 - Offline map (planned for a later version)

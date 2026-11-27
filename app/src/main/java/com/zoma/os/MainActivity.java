@@ -165,7 +165,7 @@ public class MainActivity extends Activity {
         super.onWindowFocusChanged(hasFocus);
         if(hasFocus)applyEdgeToEdge();
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);applyEdgeToEdge();centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);shuffleMode=getPreferences(MODE_PRIVATE).getBoolean("shuffleMode",false);repeatMode=getPreferences(MODE_PRIVATE).getInt("repeatMode",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);dashboard.setClickable(true);startMusicDiscovery();try{restoreUsbFolder();}catch(Throwable err){android.util.Log.e("ZomaOS","USB restore failed during launcher startup",err);}resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);applyEdgeToEdge();centerMode=getPreferences(MODE_PRIVATE).getInt("centerMode",0);theme=getPreferences(MODE_PRIVATE).getInt("theme",0);appearance=getPreferences(MODE_PRIVATE).getInt("appearance",0);shuffleMode=getPreferences(MODE_PRIVATE).getBoolean("shuffleMode",false);repeatMode=getPreferences(MODE_PRIVATE).getInt("repeatMode",0);if(appearance<0||appearance>2)appearance=0;carbonClock=getPreferences(MODE_PRIVATE).getBoolean("carbonClock",true);loadN14Skin();showAnalog=getPreferences(MODE_PRIVATE).getBoolean("showAnalog",true);clock12=getPreferences(MODE_PRIVATE).getBoolean("clock12",false);audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);dashboard=new Dashboard();setContentView(dashboard);dashboard.setClickable(true);startMusicDiscovery();try{restoreUsbFolder();}catch(Throwable err){android.util.Log.e("ZomaOS","USB restore failed during launcher startup",err);}resumeHandler.postDelayed(resumeTick,5000);resumeLastUsbOnce();resumeHandler.postDelayed(new Runnable(){public void run(){maybeShowLauncherHint();}},6000);}
     // Load only the selected scene and eight small themed assets. No GIF or frame loop.
     void recycleN14(Bitmap b){if(b!=null&&!b.isRecycled())b.recycle();}
     void loadN14Skin(){
@@ -597,7 +597,7 @@ public class MainActivity extends Activity {
     void chooseClockFormat(){final String[] choices={"24-hour", "12-hour AM/PM"};new AlertDialog.Builder(this).setTitle("Clock format").setSingleChoiceItems(choices,clock12?1:0,new DialogInterface.OnClickListener(){public void onClick(DialogInterface d,int n){clock12=n==1;getPreferences(MODE_PRIVATE).edit().putBoolean("clock12",clock12).apply();dashboard.invalidate();d.dismiss();}}).setNegativeButton("Cancel",null).show();}
     String clockText(){return new SimpleDateFormat(clock12?"hh:mm a":"HH:mm",Locale.ENGLISH).format(new Date());}
     void showZomaSettings(){
-        final String[] items={"Appearance • Night / Daylight", "Clock • 12 / 24 hour", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults"};
+        final String[] items={"Appearance • Night / Daylight", "Clock • 12 / 24 hour", "USB music folder", "Music player selection", "App Center", "Maintenance Center", "Oil reminder • Show / hide", "Oil interval (km)", "OBD connection", "Android system settings", "Restore ZomaOS defaults", "Change default launcher"};
         final Dialog dialog=new Dialog(this);dialog.setTitle("ZomaOS V15.8 • Settings");
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(16,10,16,10);panel.setBackgroundColor(Color.rgb(16,39,59));
         TextView heading=new TextView(this);heading.setText("ZOMAOS V15.8   /   SETTINGS");heading.setTextSize(22);heading.setTextColor(Color.WHITE);heading.setPadding(12,8,8,14);panel.addView(heading);
@@ -613,8 +613,39 @@ public class MainActivity extends Activity {
             case 8:showMode();break;case 9:launch(new String[]{},"settings");break;
 
             case 10:new AlertDialog.Builder(MainActivity.this).setTitle("Restore defaults?").setPositiveButton("Reset",new DialogInterface.OnClickListener(){public void onClick(DialogInterface a,int b){getPreferences(MODE_PRIVATE).edit().clear().apply();theme=0;showAnalog=true;centerMode=0;appearance=0;clock12=false;dashboard.invalidate();}}).setNegativeButton("Cancel",null).show();break;
+            case 11:showDefaultLauncherReset();break;
         }}});
         dialog.setContentView(panel);dialog.show();if(dialog.getWindow()!=null)dialog.getWindow().setLayout(-1,-1);
+    }
+    boolean isDefaultHome(){
+        try{Intent h=new Intent(Intent.ACTION_MAIN);h.addCategory(Intent.CATEGORY_HOME);
+            ResolveInfo ri=getPackageManager().resolveActivity(h,PackageManager.MATCH_DEFAULT_ONLY);
+            return ri!=null&&ri.activityInfo!=null&&getPackageName().equals(ri.activityInfo.packageName);
+        }catch(Throwable t){return true;}
+    }
+    // One-time tip (never repeated): shown only when ZomaOS is not the default launcher.
+    void maybeShowLauncherHint(){
+        try{
+            if(getPreferences(MODE_PRIVATE).getBoolean("launcherHintShown",false)||isDefaultHome())return;
+            getPreferences(MODE_PRIVATE).edit().putBoolean("launcherHintShown",true).apply();
+            toast("Tip: press HOME and choose ZomaOS, then Always, to make it your main screen. Settings > Change default launcher explains how.");
+        }catch(Throwable ignored){}
+    }
+    void showDefaultLauncherReset(){
+        new AlertDialog.Builder(this).setTitle("Change default launcher")
+          .setMessage("Open ZomaOS app information, tap Clear defaults, then press HOME. Android will ask which launcher to use. Choose Just once if you want the question every time, or Always for ZomaOS. This does not erase themes or music.")
+          .setPositiveButton("OPEN APP INFO",new DialogInterface.OnClickListener(){
+            public void onClick(DialogInterface dialog,int which){
+                try{
+                    Intent settings=new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    settings.setData(Uri.parse("package:"+getPackageName()));
+                    startActivity(settings);
+                }catch(Throwable err){
+                    try{startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS));}
+                    catch(Throwable ignored){toast("Open Android Settings > Apps > ZomaOS > Clear defaults");}
+                }
+            }
+          }).setNegativeButton("CANCEL",null).show();
     }
     void showAppCenter(){
         Intent probe=new Intent(Intent.ACTION_MAIN);probe.addCategory(Intent.CATEGORY_LAUNCHER);

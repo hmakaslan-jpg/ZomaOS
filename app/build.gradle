@@ -6,8 +6,8 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 59
-        versionName '15.9'
+        versionCode 60
+        versionName '15.9.1'
     }
     signingConfigs {
         release {

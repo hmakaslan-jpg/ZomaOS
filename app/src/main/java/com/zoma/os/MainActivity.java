@@ -832,7 +832,7 @@ public class MainActivity extends Activity {
         android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();bg.setColor(Color.argb(245,8,18,28));bg.setCornerRadius(dp(14));bg.setStroke(dp(1),Color.argb(120,45,227,255));
         root.setBackgroundDrawable(bg);root.setPadding(dp(14),dp(10),dp(14),dp(12));
         LinearLayout head=new LinearLayout(this);head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView tt=new TextView(this);tt.setText(tr("ZomaOS V15.9  /  SETTINGS"));tt.setTextColor(Color.WHITE);tt.setTextSize(21);tt.setTypeface(Typeface.DEFAULT_BOLD);
+        TextView tt=new TextView(this);tt.setText(tr("ZomaOS V15.9.1  /  SETTINGS"));tt.setTextColor(Color.WHITE);tt.setTextSize(21);tt.setTypeface(Typeface.DEFAULT_BOLD);
         head.addView(tt,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
         TextView close=new TextView(this);close.setText(tr("CLOSE"));close.setTextColor(cyan);close.setTextSize(15);close.setTypeface(Typeface.DEFAULT_BOLD);close.setGravity(Gravity.CENTER);
         android.graphics.drawable.GradientDrawable cb=new android.graphics.drawable.GradientDrawable();cb.setColor(Color.argb(60,45,227,255));cb.setCornerRadius(dp(10));close.setBackgroundDrawable(cb);close.setPadding(dp(18),dp(8),dp(18),dp(8));
@@ -1035,7 +1035,7 @@ public class MainActivity extends Activity {
         String ver="";
         try{ver=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Throwable ignored){}
         new AlertDialog.Builder(this).setTitle(tr("About ZomaOS"))
-          .setMessage("ZomaOS V15.9"+(ver.length()>0?" ("+ver+")":"")+"\nA themeable home screen for older Android head units.\n\nProject: github.com/hmakaslan-jpg/ZomaOS\nSupport the project: ko-fi.com/zomaos\n\nIndependent project, not affiliated with Geely or Google.")
+          .setMessage("ZomaOS V15.9.1"+(ver.length()>0?" ("+ver+")":"")+"\nA themeable home screen for older Android head units.\n\nProject: github.com/hmakaslan-jpg/ZomaOS\nSupport the project: ko-fi.com/zomaos\n\nIndependent project, not affiliated with Geely or Google.")
           .setPositiveButton(tr("OK"),null).show();
     }
     void showSystemSettings(){
@@ -1514,7 +1514,7 @@ public class MainActivity extends Activity {
         "Cannot play selected audio file","\u062a\u0639\u0630\u0631 \u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0645\u062d\u062f\u062f",
         "Accent color","\u0644\u0648\u0646 \u0627\u0644\u062a\u0645\u064a\u064a\u0632",
         "Clock format","\u0634\u0643\u0644 \u0627\u0644\u0633\u0627\u0639\u0629",
-        "ZomaOS V15.9  /  SETTINGS","ZomaOS V15.9  /  \u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a",
+        "ZomaOS V15.9.1  /  SETTINGS","ZomaOS V15.9.1  /  \u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a",
         "THEME","\u0627\u0644\u0633\u0645\u0629",
         "Look: ","\u0627\u0644\u0645\u0638\u0647\u0631: ",
         "Accent color: ","\u0644\u0648\u0646 \u0627\u0644\u062a\u0645\u064a\u064a\u0632: ",
@@ -2160,10 +2160,12 @@ public class MainActivity extends Activity {
                 fill(Color.WHITE);c.drawBitmap(albumArt,null,new RectF(artX,314,artX+40,354),p);
             }else{
                 fill(day?col("#D8E5EF"):col("#23394E"));c.drawRoundRect(new RectF(artX,314,artX+40,354),3,3,p);
-                centerText("♫",artX+20,342,23,accent,true);
+                if(!usbMode&&!localMode&&fmMode())radioGlyph(artX+20,334,accent);
+                else centerText("♫",artX+20,342,23,accent,true);
             }
-            String title=(usbMode||localMode)?trackTitle:"Choose USB music";
-            String artist=(usbMode||localMode)?trackArtist:"USB MUSIC";
+            boolean fmBar=!usbMode&&!localMode&&fmMode();
+            String title=(usbMode||localMode)?trackTitle:fmBar?"FM Radio":"Choose USB music";
+            String artist=(usbMode||localMode)?trackArtist:fmBar?(musicActive()?"Playing in factory radio":"Factory radio, last source - tap to open"):"USB MUSIC";
             if(title==null||title.length()==0)title="Choose USB music";
             if(artist==null)artist="";
             float tx=artX+48, barRight=day?520:530;
@@ -2198,6 +2200,15 @@ public class MainActivity extends Activity {
             }
         }
 
+        // Small flat radio icon (body, antenna, dial, speaker lines). Plain shapes, no bitmaps.
+        void radioGlyph(float cx,float cy,int color){
+            p.reset();p.setAntiAlias(true);p.setColor(color);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2f);
+            c.drawLine(cx+6,cy-6,cx+14,cy-14,p);
+            c.drawRoundRect(new RectF(cx-15,cy-6,cx+15,cy+14),3,3,p);
+            c.drawCircle(cx+6,cy+4,4,p);
+            for(int k=0;k<3;k++)c.drawLine(cx-11,cy+k*4-1,cx-3,cy+k*4-1,p);
+            p.setStyle(Paint.Style.FILL);
+        }
         void musicCircle(float x,float y,float r,String glyph,boolean active,boolean day,int accent){
             fill(day?col("#D5E5F2"):col("#1A324A"));c.drawCircle(x,y,r,p);
             p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(active?2.4f:1.3f);

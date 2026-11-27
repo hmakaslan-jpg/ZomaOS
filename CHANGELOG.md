@@ -2,6 +2,9 @@
 
 Format based on Keep a Changelog. Older internal build notes are in `docs/archive/`.
 
+## [15.9.1] - 2026-11-27 (testing)
+- Music bar shows "FM Radio / Factory radio, last source - tap to open" with a radio icon after the factory radio was opened
+
 ## [15.9] - 2026-11-27
 Same three themes as 15.8 (Electric, Pearl, Carbon). No animated themes.
 

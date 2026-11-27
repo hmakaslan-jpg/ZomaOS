@@ -2189,6 +2189,11 @@ public class MainActivity extends Activity {
             musicCircle(680,335,17,"▶",false,day,accent);
             musicCircle(725,335,15,repeatMode==2?"↻¹":"↻",repeatMode!=0,day,accent);
             drawOriginalFiveDockApps(day,accent);
+            // Names under the five dock icons (the artwork has icons only), so FM RADIO etc. are readable. Cheap: five short strings.
+            for(int di=0;di<5;di++){
+                String dl=dockLabel(di);if(dl.length()>13)dl=dl.substring(0,12)+".";
+                centerText(dl,(dockEdges[di]+dockEdges[di+1])/2f,455f,10f,day?col("#1B3550"):Color.WHITE,true);
+            }
             if(pressedDock>=0&&pressedDock<5){
                 float l=dockEdges[pressedDock]+5,r=dockEdges[pressedDock+1]-5;
                 p.reset();p.setAntiAlias(true);p.setStyle(Paint.Style.STROKE);

@@ -8,10 +8,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out approved main branch
+      - name: Check out the selected branch
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -148,7 +148,7 @@ jobs:
       - name: Upload signed test APK
         uses: actions/upload-artifact@v4
         with:
-          name: ZomaOS-V15_8-signed-legacy-test
+          name: ZomaOS-V15_9-signed-test
           path: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/apk/release/SHA256SUMS.txt

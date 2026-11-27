@@ -58,7 +58,7 @@ Got a different unit? Open a [compatibility report](../../issues/new?template=co
 5. Open the screen that shows the **barcode**.
 6. Tap the barcode **7 times** to reveal the hidden File Manager (works on the tested firmware; yours may differ).
 7. In File Manager, open the USB drive, select the APK and install it.
-8. Press HOME and choose **ZomaOS**. Pick "Always" only after you have tested it.
+8. Press HOME and choose **ZomaOS**. Pick "Always" only after you have tested it. To change it later, open ZomaOS Settings > **Change default launcher**.
 9. Test radio, USB music, Bluetooth and steering-wheel buttons before you drive.
 10. Set the date back to normal.
 

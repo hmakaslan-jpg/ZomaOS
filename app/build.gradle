@@ -6,8 +6,8 @@ android {
         applicationId 'com.zoma.os'
         minSdk 16
         targetSdk 22
-        versionCode 58
-        versionName '15.8'
+        versionCode 59
+        versionName '15.9'
     }
     signingConfigs {
         release {
@@ -23,7 +23,7 @@ android {
         }
     }
     lint {
-        disable 'ExpiredTargetSdkVersion'
+        disable 'ExpiredTargetSdkVersion', 'MockLocation'
     }
     buildTypes {
         release {

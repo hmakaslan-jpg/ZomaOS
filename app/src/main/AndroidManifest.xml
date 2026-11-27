@@ -3,11 +3,15 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
     <application android:allowBackup="false" android:usesCleartextTraffic="true" android:label="ZomaOS" android:icon="@drawable/zoma_icon" android:theme="@android:style/Theme.Holo.NoActionBar.Fullscreen">
         <activity android:name=".MainActivity" android:screenOrientation="landscape" android:launchMode="singleTask" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>
         </activity>
+        <service android:name=".MainActivity$GpsService" android:exported="false" />
     </application>
 </manifest>

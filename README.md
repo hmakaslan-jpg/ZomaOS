@@ -75,7 +75,7 @@ ZomaOS does not include Android Auto. The ZomaOS **Android Auto** button opens a
 - Install it the same way as ZomaOS (USB drive and the unit's File Manager), then open ZomaOS and tap the Android Auto button.
 - Your phone needs the Android Auto app, and the cable must support data.
 
-OpenAuto is a separate project by its own author. ZomaOS is **not affiliated** with it, and does not host or modify it. Please read its page for its terms and for support. It is also not the Raspberry Pi project of the same name by f1x.
+OpenAuto is a separate project by its own author. ZomaOS is **not affiliated** with it, and does not host or modify it. Please read its page for its terms and for support. It is also not the Raspberry Pi project of the same name by f1x. OpenAuto is MIT-licensed by Jan Ried; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for credit and the license text.
 
 ## Rollback
 

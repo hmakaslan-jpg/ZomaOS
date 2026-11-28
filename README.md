@@ -14,14 +14,19 @@ A lightweight, themeable home-screen launcher for older Android head units, buil
 
 ## Status
 
-**Free preview, v15.8.** Tested by the author on **one** original Geely X7 2019 head unit: 800 x 480 screen, Android 4.x firmware. Other cars, screens, Android versions and firmware builds are **untested**. Do not assume it works on your unit; see [Compatibility](#compatibility) and help us find out.
+**Free version, V15.9.1.** Tested by the author on **one** original Geely X7 2019 head unit: 800 x 480 screen, Android 4.x firmware. Other cars, screens, Android versions and firmware builds are **untested**. Do not assume it works on your unit; see [Compatibility](#compatibility) and help us find out.
 
 ## Features
 
 - **Three themes:** Carbon (red), Electric (blue), Day (silver)
-- **Analog clock** (12 or 24 hour)
-- **USB music:** browse folders, play, and resume where you stopped
-- **Radio shortcut** to the head unit's built-in radio app
+- **Analog clock** (12 or 24 hour) and a bigger, bolder date
+- **USB music:** browse folders, play, and resume where you stopped. The unit's steering/panel keys skip USB and local tracks
+- **Radio button** opens the head unit's factory radio. After you open it, the music bar shows FM Radio (radio icon, "Factory radio", last source; tap to open)
+- **Settings** in clear sections, English by default with an Arabic option, a shortcut to change the default launcher, and settings backup and restore
+- **Apps list** with search and sorting
+- **Faster home screen** on old units
+- **Read-only fault codes** and an engine temperature alert (needs OBD)
+- **Optional phone GPS** for the speed gauge, plus weather and prayer-time chips (all off by default)
 - **Android Auto launch** through the third-party app [OpenAuto by Jan Ried](https://github.com/JanRi3D/OpenAuto/releases) (you install it yourself; ZomaOS only opens it). See [Android Auto setup](#android-auto-setup)
 - **App grid** and quick Wi-Fi / Bluetooth settings
 - **OBD2 readout** (speed, RPM, coolant, load, fuel) over a Bluetooth ELM327 adapter or a phone bridge, with a **demo mode** that shows simulated data (clearly labelled "DEMO / NOT REAL DATA")
@@ -51,8 +56,8 @@ Got a different unit? Open a [compatibility report](../../issues/new?template=co
 
 **Steps (as done on the tested unit)**
 
-1. Download `ZomaOs.V15.8.Release.apk` from the [latest release](../../releases/latest). Only download from this repository, not from mirrors.
-2. Check the file: `sha256sum ZomaOs.V15.8.Release.apk` (Windows: `certutil -hashfile ZomaOs.V15.8.Release.apk SHA256`) and compare with the SHA-256 listed in the release notes.
+1. Download `ZomaOs.V15.9.1.Release.apk` from the [latest release](../../releases/latest). Only download from this repository, not from mirrors.
+2. Check the file: `sha256sum ZomaOs.V15.9.1.Release.apk` (Windows: `certutil -hashfile ZomaOs.V15.9.1.Release.apk SHA256`) and compare with the SHA-256 listed in the release notes.
 3. Format a USB flash drive as **FAT32** and copy the APK onto it.
 4. On the head unit, set the date to **1 January 2000**.
 5. Open the screen that shows the **barcode**.
